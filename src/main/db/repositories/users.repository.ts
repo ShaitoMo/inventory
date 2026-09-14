@@ -83,3 +83,19 @@ export async function verifyPassword(db: Db, username: string, password: string)
   if (!user) return false
   return passwordMatches(password, user.passwordHash)
 }
+
+export async function authenticateUser(
+  db: Db,
+  username: string,
+  password: string
+): Promise<PublicUser | null> {
+  const [user] = await db
+    .select({ ...userSelection, passwordHash: schema.users.passwordHash })
+    .from(schema.users)
+    .where(eq(schema.users.username, username))
+
+  if (!user) return null
+  if (!(await passwordMatches(password, user.passwordHash))) return null
+
+  return { id: user.id, name: user.name, username: user.username, createdAt: user.createdAt }
+}

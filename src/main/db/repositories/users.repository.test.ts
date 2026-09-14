@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createTestDb } from '../testDb'
 import {
+  authenticateUser,
   changePassword,
   createUser,
   deleteUser,
@@ -65,6 +66,39 @@ describe('changePassword', () => {
 
     expect(await verifyPassword(db, 'ada', 'new password')).toBe(true)
     expect(await verifyPassword(db, 'ada', 'old password')).toBe(false)
+  })
+})
+
+describe('authenticateUser', () => {
+  it('returns the public user when the password matches', async () => {
+    const db = await createTestDb()
+    const created = await createUser(db, {
+      name: 'Ada Lovelace',
+      username: 'ada',
+      password: 'correct horse battery staple'
+    })
+
+    const user = await authenticateUser(db, 'ada', 'correct horse battery staple')
+
+    expect(user).toMatchObject({ id: created.id, name: 'Ada Lovelace', username: 'ada' })
+    expect(user).not.toHaveProperty('passwordHash')
+  })
+
+  it('returns null when the password is wrong', async () => {
+    const db = await createTestDb()
+    await createUser(db, {
+      name: 'Ada Lovelace',
+      username: 'ada',
+      password: 'correct horse battery staple'
+    })
+
+    expect(await authenticateUser(db, 'ada', 'wrong password')).toBeNull()
+  })
+
+  it('returns null when the username is unknown', async () => {
+    const db = await createTestDb()
+
+    expect(await authenticateUser(db, 'nobody', 'anything')).toBeNull()
   })
 })
 
