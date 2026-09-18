@@ -15,7 +15,6 @@ export const movementTypeEnum = pgEnum('movement_type', ['in', 'out', 'adjust'])
 
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
-  name: varchar('name').notNull(),
   username: varchar('username').notNull().unique(),
   passwordHash: varchar('password_hash').notNull(),
   createdAt: timestamp('created_at').notNull().defaultNow()

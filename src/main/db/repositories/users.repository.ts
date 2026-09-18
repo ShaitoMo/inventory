@@ -28,7 +28,6 @@ async function passwordMatches(password: string, passwordHash: string): Promise<
 
 const userSelection = {
   id: schema.users.id,
-  name: schema.users.name,
   username: schema.users.username,
   createdAt: schema.users.createdAt
 }
@@ -39,13 +38,13 @@ export async function listUsers(db: Db): Promise<PublicUser[]> {
 
 export async function createUser(
   db: Db,
-  input: { name: string; username: string; password: string }
+  input: { username: string; password: string }
 ): Promise<PublicUser> {
   const passwordHash = await hashPassword(input.password)
 
   const [user] = await db
     .insert(schema.users)
-    .values({ name: input.name, username: input.username, passwordHash })
+    .values({ username: input.username, passwordHash })
     .returning(userSelection)
 
   return user
@@ -54,7 +53,7 @@ export async function createUser(
 export async function updateUser(
   db: Db,
   id: number,
-  input: { name?: string; username?: string }
+  input: { username?: string }
 ): Promise<PublicUser> {
   const [user] = await db
     .update(schema.users)
@@ -102,5 +101,5 @@ export async function authenticateUser(
   if (!user) return null
   if (!(await passwordMatches(password, user.passwordHash))) return null
 
-  return { id: user.id, name: user.name, username: user.username, createdAt: user.createdAt }
+  return { id: user.id, username: user.username, createdAt: user.createdAt }
 }

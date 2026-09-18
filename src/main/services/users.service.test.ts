@@ -7,7 +7,7 @@ describe('updateUser', () => {
   it('throws a NotFoundError when the user does not exist', async () => {
     const db = await createTestDb()
 
-    await expect(updateUser(db, 999, { name: 'Ada' })).rejects.toThrow(NotFoundError)
+    await expect(updateUser(db, 999, { username: 'ada' })).rejects.toThrow(NotFoundError)
   })
 })
 

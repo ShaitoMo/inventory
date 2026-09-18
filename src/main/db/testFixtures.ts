@@ -11,10 +11,9 @@ export async function seedCategory(db: Db, name = 'Beverages'): ReturnType<typeo
 
 export async function seedUser(
   db: Db,
-  overrides: Partial<{ name: string; username: string }> = {}
+  overrides: Partial<{ username: string }> = {}
 ): ReturnType<typeof createUser> {
   return createUser(db, {
-    name: overrides.name ?? 'Ada Lovelace',
     username: overrides.username ?? 'ada',
     password: 'correct horse battery staple'
   })

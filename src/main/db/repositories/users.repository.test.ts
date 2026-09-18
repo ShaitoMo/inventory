@@ -25,12 +25,11 @@ describe('createUser', () => {
     const db = await createTestDb()
 
     const user = await createUser(db, {
-      name: 'Ada Lovelace',
       username: 'ada',
       password: 'correct horse battery staple'
     })
 
-    expect(user).toMatchObject({ name: 'Ada Lovelace', username: 'ada' })
+    expect(user).toMatchObject({ username: 'ada' })
     expect(user).not.toHaveProperty('passwordHash')
 
     const users = await listUsers(db)
@@ -42,14 +41,13 @@ describe('updateUser', () => {
   it('updates the given fields and returns the updated user', async () => {
     const db = await createTestDb()
     const created = await createUser(db, {
-      name: 'Ada Lovelace',
       username: 'ada',
       password: 'correct horse battery staple'
     })
 
-    const updated = await updateUser(db, created.id, { name: 'Ada King' })
+    const updated = await updateUser(db, created.id, { username: 'ada.king' })
 
-    expect(updated).toMatchObject({ id: created.id, name: 'Ada King', username: 'ada' })
+    expect(updated).toMatchObject({ id: created.id, username: 'ada.king' })
   })
 })
 
@@ -57,7 +55,6 @@ describe('changePassword', () => {
   it('replaces the password so only the new one verifies', async () => {
     const db = await createTestDb()
     const created = await createUser(db, {
-      name: 'Ada Lovelace',
       username: 'ada',
       password: 'old password'
     })
@@ -73,21 +70,19 @@ describe('authenticateUser', () => {
   it('returns the public user when the password matches', async () => {
     const db = await createTestDb()
     const created = await createUser(db, {
-      name: 'Ada Lovelace',
       username: 'ada',
       password: 'correct horse battery staple'
     })
 
     const user = await authenticateUser(db, 'ada', 'correct horse battery staple')
 
-    expect(user).toMatchObject({ id: created.id, name: 'Ada Lovelace', username: 'ada' })
+    expect(user).toMatchObject({ id: created.id, username: 'ada' })
     expect(user).not.toHaveProperty('passwordHash')
   })
 
   it('returns null when the password is wrong', async () => {
     const db = await createTestDb()
     await createUser(db, {
-      name: 'Ada Lovelace',
       username: 'ada',
       password: 'correct horse battery staple'
     })
@@ -106,7 +101,6 @@ describe('deleteUser', () => {
   it('removes the user', async () => {
     const db = await createTestDb()
     const created = await createUser(db, {
-      name: 'Ada Lovelace',
       username: 'ada',
       password: 'correct horse battery staple'
     })
