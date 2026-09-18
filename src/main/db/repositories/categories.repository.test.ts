@@ -3,6 +3,7 @@ import { createTestDb } from '../testDb'
 import {
   createCategory,
   deleteCategory,
+  getCategory,
   listCategories,
   updateCategory
 } from './categories.repository'
@@ -23,6 +24,21 @@ describe('createCategory', () => {
 
     expect(category).toMatchObject({ name: 'Beverages' })
     expect(await listCategories(db)).toHaveLength(1)
+  })
+})
+
+describe('getCategory', () => {
+  it('returns the category by id', async () => {
+    const db = await createTestDb()
+    const created = await createCategory(db, { name: 'Beverages' })
+
+    expect(await getCategory(db, created.id)).toMatchObject({ id: created.id, name: 'Beverages' })
+  })
+
+  it('returns undefined when the category does not exist', async () => {
+    const db = await createTestDb()
+
+    expect(await getCategory(db, 999)).toBeUndefined()
   })
 })
 

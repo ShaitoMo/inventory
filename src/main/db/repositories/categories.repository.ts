@@ -9,6 +9,11 @@ export async function listCategories(db: Db): Promise<Category[]> {
   return db.select().from(schema.categories)
 }
 
+export async function getCategory(db: Db, id: number): Promise<Category | undefined> {
+  const [category] = await db.select().from(schema.categories).where(eq(schema.categories.id, id))
+  return category
+}
+
 export async function createCategory(db: Db, input: { name: string }): Promise<Category> {
   const [category] = await db.insert(schema.categories).values(input).returning()
   return category
