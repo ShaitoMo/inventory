@@ -70,8 +70,13 @@ export async function changePassword(db: Db, id: number, newPassword: string): P
   await db.update(schema.users).set({ passwordHash }).where(eq(schema.users.id, id))
 }
 
-export async function deleteUser(db: Db, id: number): Promise<void> {
-  await db.delete(schema.users).where(eq(schema.users.id, id))
+export async function deleteUser(db: Db, id: number): Promise<boolean> {
+  const deleted = await db
+    .delete(schema.users)
+    .where(eq(schema.users.id, id))
+    .returning({ id: schema.users.id })
+
+  return deleted.length > 0
 }
 
 export async function verifyPassword(db: Db, username: string, password: string): Promise<boolean> {

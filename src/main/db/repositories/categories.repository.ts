@@ -33,6 +33,11 @@ export async function updateCategory(
   return category
 }
 
-export async function deleteCategory(db: Db, id: number): Promise<void> {
-  await db.delete(schema.categories).where(eq(schema.categories.id, id))
+export async function deleteCategory(db: Db, id: number): Promise<boolean> {
+  const deleted = await db
+    .delete(schema.categories)
+    .where(eq(schema.categories.id, id))
+    .returning({ id: schema.categories.id })
+
+  return deleted.length > 0
 }

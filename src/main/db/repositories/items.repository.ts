@@ -94,7 +94,7 @@ export async function createItem(
   return item
 }
 
-export async function deleteItem(db: Db, id: number): Promise<void> {
+export async function deleteItem(db: Db, id: number): Promise<boolean> {
   const [{ count }] = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(schema.stockMovements)
@@ -104,7 +104,12 @@ export async function deleteItem(db: Db, id: number): Promise<void> {
     throw new Error('Cannot delete an item with existing movements')
   }
 
-  await db.delete(schema.items).where(eq(schema.items.id, id))
+  const deleted = await db
+    .delete(schema.items)
+    .where(eq(schema.items.id, id))
+    .returning({ id: schema.items.id })
+
+  return deleted.length > 0
 }
 
 export async function lowStockItems(db: Db): Promise<Item[]> {
