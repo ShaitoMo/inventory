@@ -3,6 +3,7 @@ import { cpSync } from 'fs'
 import { defineConfig } from 'electron-vite'
 import type { Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
 
 // drizzle's migrator reads migration files from disk at runtime, so they
 // need to be copied alongside the bundled main process output.
@@ -25,9 +26,10 @@ export default defineConfig({
   renderer: {
     resolve: {
       alias: {
-        '@renderer': resolve('src/renderer/src')
+        '@renderer': resolve('src/renderer/src'),
+        '@': resolve('src/renderer/src')
       }
     },
-    plugins: [react()]
+    plugins: [react(), tailwindcss()]
   }
 })

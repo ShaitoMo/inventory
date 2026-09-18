@@ -9,12 +9,12 @@ function App(): React.JSX.Element {
       <img alt="logo" className="logo" src={electronLogo} />
       <div className="creator">Powered by electron-vite</div>
 
-        <div className="action">
-          <a target="_blank" rel="noreferrer" onClick={ipcHandle}>
-            Send IPC
-          </a>
-        </div>
-  
+      <div className="action">
+        <a target="_blank" rel="noreferrer" onClick={ipcHandle}>
+          Send IPC
+        </a>
+      </div>
+
       <Versions></Versions>
     </>
   )
