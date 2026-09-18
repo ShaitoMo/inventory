@@ -20,7 +20,15 @@ function copyDbMigrations(): Plugin {
 
 export default defineConfig({
   main: {
-    plugins: [copyDbMigrations()]
+    plugins: [copyDbMigrations()],
+    build: {
+      rollupOptions: {
+        input: {
+          index: resolve('src/main/index.ts'),
+          seed: resolve('src/main/seed.ts')
+        }
+      }
+    }
   },
   preload: {},
   renderer: {

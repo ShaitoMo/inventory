@@ -12,6 +12,13 @@ export class ValidationError extends Error {
   }
 }
 
+export class UnauthorizedError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'UnauthorizedError'
+  }
+}
+
 // Repositories throw plain `Error`s with a fixed set of known messages for
 // business-rule violations. Services normalize those into typed errors here
 // so callers (eventually IPC handlers) can branch on error type instead of
@@ -25,7 +32,11 @@ const VALIDATION_MESSAGES = new Set([
 ])
 
 export function toServiceError(error: unknown): Error {
-  if (error instanceof NotFoundError || error instanceof ValidationError) {
+  if (
+    error instanceof NotFoundError ||
+    error instanceof ValidationError ||
+    error instanceof UnauthorizedError
+  ) {
     return error
   }
   if (!(error instanceof Error)) {

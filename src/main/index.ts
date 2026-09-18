@@ -3,6 +3,11 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { getDb } from './db/client'
+import { registerItemsIpcHandlers } from './ipc/items.ipc'
+import { registerCategoriesIpcHandlers } from './ipc/categories.ipc'
+import { registerMovementsIpcHandlers } from './ipc/movements.ipc'
+import { registerUsersIpcHandlers } from './ipc/users.ipc'
+import { registerSessionIpcHandlers } from './ipc/session.ipc'
 
 function createWindow(): void {
   // Create the browser window.
@@ -53,13 +58,18 @@ app.whenReady().then(async () => {
   // IPC test
   ipcMain.on('ping', () => console.log('pong'))
 
-  try {
-    await getDb()
-  } catch (error) {
+  const db = await getDb(join(__dirname, 'db/migrations')).catch((error) => {
     console.error('Failed to open database', error)
     app.quit()
-    return
-  }
+    return null
+  })
+  if (!db) return
+
+  registerItemsIpcHandlers(db)
+  registerCategoriesIpcHandlers(db)
+  registerMovementsIpcHandlers(db)
+  registerUsersIpcHandlers(db)
+  registerSessionIpcHandlers(db)
 
   createWindow()
 
