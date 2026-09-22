@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createTestDb } from '../testDb'
+import { seedUser } from '../testFixtures'
 import {
   createCategory,
   deleteCategory,
@@ -7,6 +8,7 @@ import {
   listCategories,
   updateCategory
 } from './categories.repository'
+import { createItem } from './items.repository'
 
 describe('listCategories', () => {
   it('returns an empty list when there are no categories', async () => {
@@ -61,5 +63,17 @@ describe('deleteCategory', () => {
     await deleteCategory(db, created.id)
 
     expect(await listCategories(db)).toEqual([])
+  })
+
+  it('rejects deleting a category with existing items', async () => {
+    const db = await createTestDb()
+    const created = await createCategory(db, { name: 'Beverages' })
+    const user = await seedUser(db)
+    await createItem(db, { name: 'Coffee Beans', categoryId: created.id, createdBy: user.id })
+
+    await expect(deleteCategory(db, created.id)).rejects.toThrow(
+      'Cannot delete a category with existing items'
+    )
+    expect(await getCategory(db, created.id)).toMatchObject({ id: created.id })
   })
 })

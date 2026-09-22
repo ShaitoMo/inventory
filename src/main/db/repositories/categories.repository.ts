@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import { PgliteDatabase } from 'drizzle-orm/pglite'
 import * as schema from '../schema'
 
@@ -34,6 +34,15 @@ export async function updateCategory(
 }
 
 export async function deleteCategory(db: Db, id: number): Promise<boolean> {
+  const [{ count }] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(schema.items)
+    .where(eq(schema.items.categoryId, id))
+
+  if (count > 0) {
+    throw new Error('Cannot delete a category with existing items')
+  }
+
   const deleted = await db
     .delete(schema.categories)
     .where(eq(schema.categories.id, id))
