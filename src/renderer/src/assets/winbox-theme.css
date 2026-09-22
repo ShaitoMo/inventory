@@ -1,0 +1,49 @@
+.inventory-window.winbox {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow:
+    0 20px 40px rgba(0, 0, 0, 0.25),
+    0 8px 16px rgba(0, 0, 0, 0.18);
+}
+
+.inventory-window .wb-header {
+  background: var(--card);
+  color: var(--card-foreground);
+  height: 36px;
+  line-height: 36px;
+  border-bottom: 1px solid var(--border);
+}
+
+.inventory-window .wb-title {
+  font-family: inherit;
+  font-size: 13px;
+  padding-left: 4px;
+}
+
+.inventory-window .wb-body {
+  background: var(--background);
+  color: var(--foreground);
+  margin: 0 !important;
+}
+
+.inventory-window .wb-control {
+  filter: invert(1);
+}
+
+:root.dark .inventory-window .wb-control {
+  filter: none;
+}
+
+.inventory-window.focus {
+  border-color: var(--ring);
+}
+
+/* WinBox assigns z-index inline based on focus/creation order, so a later-
+   focused window can render over a minimized one's taskbar-strip entry.
+   Force minimized windows above everything else, overriding that inline
+   style. */
+.inventory-window.min {
+  z-index: 2147483647 !important;
+}

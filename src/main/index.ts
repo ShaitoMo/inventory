@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, Menu, type MenuItemConstructorOptions } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
@@ -8,6 +8,36 @@ import { registerCategoriesIpcHandlers } from './ipc/categories.ipc'
 import { registerMovementsIpcHandlers } from './ipc/movements.ipc'
 import { registerUsersIpcHandlers } from './ipc/users.ipc'
 import { registerSessionIpcHandlers } from './ipc/session.ipc'
+
+// Replaces Electron's default menu (File/Edit/View/Window/Help, aimed at a
+// generic Electron scaffold - Undo/Redo/DevTools/a link to electronjs.org)
+// with only the items that actually apply to this app. Every item uses
+// Electron's built-in role so the accelerator is wired up natively, not
+// just decorative.
+function buildApplicationMenu(): void {
+  const template: MenuItemConstructorOptions[] = [
+    {
+      label: 'File',
+      submenu: [
+        { label: 'Reload', role: 'reload', accelerator: 'CmdOrCtrl+R' },
+        { type: 'separator' },
+        { label: 'Close application', role: 'quit', accelerator: 'CmdOrCtrl+Q' }
+      ]
+    },
+    {
+      label: 'View',
+      submenu: [
+        { label: 'Zoom In', role: 'zoomIn', accelerator: 'CmdOrCtrl+=' },
+        { label: 'Zoom Out', role: 'zoomOut', accelerator: 'CmdOrCtrl+-' },
+        { label: 'Full Screen', role: 'togglefullscreen', accelerator: 'F11' },
+        { type: 'separator' },
+        { label: 'Reset to Default', role: 'resetZoom', accelerator: 'CmdOrCtrl+0' }
+      ]
+    }
+  ]
+
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template))
+}
 
 function createWindow(): void {
   // Create the browser window.
@@ -24,6 +54,7 @@ function createWindow(): void {
   })
 
   mainWindow.on('ready-to-show', () => {
+    mainWindow.maximize()
     mainWindow.show()
   })
 
@@ -45,14 +76,19 @@ function createWindow(): void {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(async () => {
+  buildApplicationMenu()
+
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
 
   // Default open or close DevTools by F12 in development
   // and ignore CommandOrControl + R in production.
+  // `zoom: true` is required or this helper swallows Ctrl+-/Ctrl+Shift+=
+  // itself (via preventDefault in a before-input-event handler) before our
+  // own menu's Zoom In/Out accelerators ever see the key press.
   // see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
   app.on('browser-window-created', (_, window) => {
-    optimizer.watchWindowShortcuts(window)
+    optimizer.watchWindowShortcuts(window, { zoom: true })
   })
 
   // IPC test

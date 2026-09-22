@@ -1,23 +1,44 @@
-import Versions from './components/Versions'
-import electronLogo from './assets/electron.svg'
+import { useEffect, useState } from 'react'
+import LoginForm from './components/LoginForm'
+import AppShell from './components/layout/AppShell'
+
+type SessionUser = NonNullable<
+  Extract<Awaited<ReturnType<typeof window.api.session.current>>, { ok: true }>['data']
+>
 
 function App(): React.JSX.Element {
-  const ipcHandle = (): void => window.electron.ipcRenderer.send('ping')
+  const [user, setUser] = useState<SessionUser | null>(null)
+  const [checking, setChecking] = useState(true)
 
-  return (
-    <>
-      <img alt="logo" className="logo" src={electronLogo} />
-      <div className="creator">Powered by electron-vite</div>
+  useEffect(() => {
+    window.api.session.current().then((result) => {
+      if (result.ok) setUser(result.data)
+      setChecking(false)
+    })
+  }, [])
 
-      <div className="action">
-        <a target="_blank" rel="noreferrer" onClick={ipcHandle}>
-          Send IPC
-        </a>
+  async function handleLogout(): Promise<void> {
+    await window.api.session.logout()
+    setUser(null)
+  }
+
+  if (checking) {
+    return (
+      <div className="flex h-full w-full items-center justify-center">
+        <p className="text-sm text-muted-foreground">Loading…</p>
       </div>
+    )
+  }
 
-      <Versions></Versions>
-    </>
-  )
+  if (!user) {
+    return (
+      <div className="flex h-full w-full items-center justify-center">
+        <LoginForm onSuccess={setUser} />
+      </div>
+    )
+  }
+
+  return <AppShell username={user.username} onLogout={handleLogout} />
 }
 
 export default App

@@ -30,7 +30,8 @@
     "cn": "^0.3.0",
     "drizzle-orm": "^0.45.2",
     "lucide-react": "^1.47.0",
-    "radix-ui": "^1.6.7"
+    "radix-ui": "^1.6.7",
+    "winbox": "^0.2.82"
   },
   "devDependencies": {
     "@electron-toolkit/eslint-config-prettier": "^3.0.0",
