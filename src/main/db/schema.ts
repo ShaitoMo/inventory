@@ -42,8 +42,7 @@ export const items = pgTable(
       .references(() => users.id, { onDelete: 'restrict' }),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().defaultNow()
-  },
-  (table) => [check('items_quantity_nonnegative', sql`${table.quantity} >= 0`)]
+  }
 )
 
 export const stockMovements = pgTable(

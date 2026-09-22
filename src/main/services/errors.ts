@@ -27,7 +27,6 @@ const NOT_FOUND_MESSAGES = new Set(['Item not found', 'Category not found', 'Use
 
 const VALIDATION_MESSAGES = new Set([
   'Cannot delete an item with existing movements',
-  'Movement would take quantity below zero',
   'createMovement only accepts type "in" or "out"; use recount for "adjust"'
 ])
 

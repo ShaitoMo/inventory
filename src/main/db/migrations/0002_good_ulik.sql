@@ -1,0 +1,1 @@
+ALTER TABLE "items" DROP CONSTRAINT "items_quantity_nonnegative";

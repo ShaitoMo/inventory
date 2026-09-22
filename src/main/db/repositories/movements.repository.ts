@@ -26,10 +26,6 @@ export async function createMovement(
     const nextQuantity =
       input.type === 'in' ? item.quantity + input.quantity : item.quantity - input.quantity
 
-    if (nextQuantity < 0) {
-      throw new Error('Movement would take quantity below zero')
-    }
-
     const [movement] = await tx
       .insert(schema.stockMovements)
       .values({

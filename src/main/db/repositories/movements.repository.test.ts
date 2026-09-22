@@ -57,14 +57,12 @@ describe('createMovement', () => {
     expect(await currentQuantity(db, item.id)).toBe(6)
   })
 
-  it('rejects an "out" movement that would take quantity below zero', async () => {
+  it('allows an "out" movement to take quantity below zero', async () => {
     const db = await createTestDb()
     const { item, user } = await seedItem(db)
 
-    await expect(
-      createMovement(db, { itemId: item.id, type: 'out', quantity: 1, userId: user.id })
-    ).rejects.toThrow()
-    expect(await currentQuantity(db, item.id)).toBe(0)
+    await createMovement(db, { itemId: item.id, type: 'out', quantity: 1, userId: user.id })
+    expect(await currentQuantity(db, item.id)).toBe(-1)
   })
 
   it('rejects type "adjust"', async () => {
