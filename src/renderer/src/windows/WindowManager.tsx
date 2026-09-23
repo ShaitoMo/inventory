@@ -81,12 +81,17 @@ export function WindowManagerProvider({ children }: { children: ReactNode }): Re
     const def = WINDOW_DEFS[kind]
     const { top, left } = insetsRef.current
     const { width: contentWidth, height: contentHeight } = contentSizeRef.current
+    // DEFAULT_WIDTH/HEIGHT are a ceiling, not a fixed size - the app window
+    // may not be maximized, so a new window must never open bigger than the
+    // content area actually has room for right now.
+    const width = contentWidth > 0 ? Math.min(DEFAULT_WIDTH, contentWidth) : DEFAULT_WIDTH
+    const height = contentHeight > 0 ? Math.min(DEFAULT_HEIGHT, contentHeight) : DEFAULT_HEIGHT
     // WinBox's own "center"/"right"/"bottom" position keywords compute a
     // pure span (`base - center`) and never add the `left`/`top` inset back
     // in, so they land short of where the inset-aware viewport actually
     // starts. Compute exact pixels ourselves instead of relying on them.
-    const x = left + Math.max(0, (contentWidth - DEFAULT_WIDTH) / 2)
-    const y = top + Math.max(0, (contentHeight - DEFAULT_HEIGHT) / 2)
+    const x = left + Math.max(0, (contentWidth - width) / 2)
+    const y = top + Math.max(0, (contentHeight - height) / 2)
 
     const winbox = new WinBox({
       title: def.title,
@@ -99,8 +104,8 @@ export function WindowManagerProvider({ children }: { children: ReactNode }): Re
       bottom: 0,
       x,
       y,
-      width: DEFAULT_WIDTH,
-      height: DEFAULT_HEIGHT,
+      width,
+      height,
       onfocus() {
         focusedKind.current = kind
       },
