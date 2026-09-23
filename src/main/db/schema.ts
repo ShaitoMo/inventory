@@ -62,6 +62,13 @@ export const stockMovements = pgTable(
   },
   (table) => [
     index('stock_movements_item_id_created_at_idx').on(table.itemId, table.createdAt),
-    check('stock_movements_quantity_positive', sql`${table.quantity} > 0`)
+    // "in"/"out" quantity is a magnitude - direction comes from `type`.
+    // "adjust" quantity is the signed +/- change applied to reach the
+    // counted value, so it can't be zero (recount() skips the insert
+    // entirely when nothing changed) but can be negative.
+    check(
+      'stock_movements_quantity_valid',
+      sql`(${table.type} IN ('in', 'out') AND ${table.quantity} > 0) OR (${table.type} = 'adjust' AND ${table.quantity} <> 0)`
+    )
   ]
 )

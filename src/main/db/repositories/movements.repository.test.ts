@@ -76,15 +76,26 @@ describe('createMovement', () => {
 })
 
 describe('recount', () => {
-  it('writes one adjust movement for the difference and sets quantity to the counted value', async () => {
+  it('writes one adjust movement for the signed difference and sets quantity to the counted value', async () => {
     const db = await createTestDb()
     const { item, user } = await seedItem(db)
     await createMovement(db, { itemId: item.id, type: 'in', quantity: 10, userId: user.id })
 
     const movement = await recount(db, { itemId: item.id, countedQuantity: 7, userId: user.id })
 
-    expect(movement).toMatchObject({ itemId: item.id, type: 'adjust', quantity: 3 })
+    expect(movement).toMatchObject({ itemId: item.id, type: 'adjust', quantity: -3 })
     expect(await currentQuantity(db, item.id)).toBe(7)
+  })
+
+  it('stores a positive quantity when the count increases', async () => {
+    const db = await createTestDb()
+    const { item, user } = await seedItem(db)
+    await createMovement(db, { itemId: item.id, type: 'in', quantity: 10, userId: user.id })
+
+    const movement = await recount(db, { itemId: item.id, countedQuantity: 15, userId: user.id })
+
+    expect(movement).toMatchObject({ itemId: item.id, type: 'adjust', quantity: 5 })
+    expect(await currentQuantity(db, item.id)).toBe(15)
   })
 
   it('does nothing when the counted quantity matches the current quantity', async () => {
@@ -95,6 +106,28 @@ describe('recount', () => {
     const movement = await recount(db, { itemId: item.id, countedQuantity: 10, userId: user.id })
 
     expect(movement).toBeUndefined()
+    expect(await currentQuantity(db, item.id)).toBe(10)
+  })
+
+  it('allows adjusting all the way down to exactly zero', async () => {
+    const db = await createTestDb()
+    const { item, user } = await seedItem(db)
+    await createMovement(db, { itemId: item.id, type: 'in', quantity: 10, userId: user.id })
+
+    const movement = await recount(db, { itemId: item.id, countedQuantity: 0, userId: user.id })
+
+    expect(movement).toMatchObject({ itemId: item.id, type: 'adjust', quantity: -10 })
+    expect(await currentQuantity(db, item.id)).toBe(0)
+  })
+
+  it('rejects a counted quantity below zero', async () => {
+    const db = await createTestDb()
+    const { item, user } = await seedItem(db)
+    await createMovement(db, { itemId: item.id, type: 'in', quantity: 10, userId: user.id })
+
+    await expect(
+      recount(db, { itemId: item.id, countedQuantity: -1, userId: user.id })
+    ).rejects.toThrow()
     expect(await currentQuantity(db, item.id)).toBe(10)
   })
 })

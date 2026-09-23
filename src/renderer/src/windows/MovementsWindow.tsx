@@ -21,8 +21,9 @@ type User = IpcData<typeof window.api.users.list>[number]
 type Mode = 'in' | 'out' | 'adjust'
 
 const INFO_TEXT =
-  'Record stock changes. Stock in/out adjust quantity by the amount entered; Adjust sets the ' +
-  'exact counted quantity and logs the difference. Every entry is tied to your user automatically.'
+  'Record stock changes. Stock in/out change quantity by the amount entered. Adjust applies a ' +
+  '+/- correction to the current quantity (e.g. -3 to remove 3) and logs the difference; it ' +
+  "can't take an item below zero. Every entry is tied to your user automatically."
 
 const MODE_OPTIONS = [
   { value: 'in', label: 'Stock in' },
@@ -76,19 +77,27 @@ function MovementsWindow(): React.JSX.Element {
     setError(null)
     setSubmitting(true)
     try {
-      const result =
-        mode === 'adjust'
-          ? await window.api.movements.recount({
-              itemId: Number(itemId),
-              countedQuantity: Number(quantity),
-              note: note || undefined
-            })
-          : await window.api.movements.create({
-              itemId: Number(itemId),
-              type: mode,
-              quantity: Number(quantity),
-              note: note || undefined
-            })
+      let result
+      if (mode === 'adjust') {
+        const currentQuantity = items.find((item) => String(item.id) === itemId)?.quantity ?? 0
+        const countedQuantity = currentQuantity + Number(quantity)
+        if (countedQuantity < 0) {
+          setError('This adjustment would take the quantity below zero.')
+          return
+        }
+        result = await window.api.movements.recount({
+          itemId: Number(itemId),
+          countedQuantity,
+          note: note || undefined
+        })
+      } else {
+        result = await window.api.movements.create({
+          itemId: Number(itemId),
+          type: mode,
+          quantity: Number(quantity),
+          note: note || undefined
+        })
+      }
       if (result.ok) {
         setMode('')
         setItemId('')
@@ -129,36 +138,30 @@ function MovementsWindow(): React.JSX.Element {
           />
         </div>
         <div className="flex flex-col gap-1">
-          <Label htmlFor="movement-quantity">
-            {mode === 'adjust' ? 'Counted quantity' : 'Quantity'}
-          </Label>
+          <Label htmlFor="movement-quantity">{mode === 'adjust' ? 'Adjust by (+/-)' : 'Quantity'}</Label>
           <Input
             id="movement-quantity"
             type="number"
-            min={0}
+            min={mode === 'adjust' ? undefined : 0}
             step={1}
             value={quantity}
             onChange={(event) => setQuantity(event.target.value)}
-            placeholder="1"
+            placeholder={mode === 'adjust' ? 'e.g. -3' : '1'}
             required
             className="w-28"
           />
         </div>
         <div className="flex flex-col gap-1">
           <Label htmlFor="movement-note">Note</Label>
-          <Input
+          <Combobox
             id="movement-note"
-            list="movement-note-suggestions"
+            freeText
+            options={noteSuggestions.map((value) => ({ value, label: value }))}
             value={note}
-            onChange={(event) => setNote(event.target.value)}
+            onChange={setNote}
             placeholder="Optional note"
             className="w-40"
           />
-          <datalist id="movement-note-suggestions">
-            {noteSuggestions.map((value) => (
-              <option key={value} value={value} />
-            ))}
-          </datalist>
         </div>
         <Button type="submit" disabled={submitting}>
           Record
@@ -212,7 +215,11 @@ function MovementsWindow(): React.JSX.Element {
                       {item?.name ?? `#${movement.itemId}`}
                     </TableCell>
                     <TableCell className="capitalize">{movement.type}</TableCell>
-                    <TableCell>{movement.quantity}</TableCell>
+                    <TableCell>
+                      {movement.type === 'adjust' && movement.quantity > 0
+                        ? `+${movement.quantity}`
+                        : movement.quantity}
+                    </TableCell>
                     <TableCell>{user?.username ?? `#${movement.userId}`}</TableCell>
                     <TableCell>{movement.note ?? '—'}</TableCell>
                     <TableCell>{new Date(movement.createdAt).toLocaleString()}</TableCell>

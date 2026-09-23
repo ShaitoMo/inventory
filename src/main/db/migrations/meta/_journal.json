@@ -22,6 +22,13 @@
       "when": 1790096206307,
       "tag": "0002_good_ulik",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790159109457,
+      "tag": "0003_windy_sumo",
+      "breakpoints": true
     }
   ]
 }

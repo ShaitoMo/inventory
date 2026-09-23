@@ -28,7 +28,8 @@ const NOT_FOUND_MESSAGES = new Set(['Item not found', 'Category not found', 'Use
 const VALIDATION_MESSAGES = new Set([
   'Cannot delete an item with existing movements',
   'Cannot delete a category with existing items',
-  'createMovement only accepts type "in" or "out"; use recount for "adjust"'
+  'createMovement only accepts type "in" or "out"; use recount for "adjust"',
+  'Adjusted quantity cannot be negative'
 ])
 
 export function toServiceError(error: unknown): Error {

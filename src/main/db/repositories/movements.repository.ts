@@ -105,6 +105,10 @@ export async function recount(
   db: Db,
   input: { itemId: number; countedQuantity: number; userId: number; note?: string }
 ): Promise<Movement | undefined> {
+  if (input.countedQuantity < 0) {
+    throw new Error('Adjusted quantity cannot be negative')
+  }
+
   return db.transaction(async (tx) => {
     const [item] = await tx
       .select({ quantity: schema.items.quantity })
@@ -123,7 +127,7 @@ export async function recount(
       .values({
         itemId: input.itemId,
         type: 'adjust',
-        quantity: Math.abs(diff),
+        quantity: diff,
         note: input.note,
         userId: input.userId
       })
