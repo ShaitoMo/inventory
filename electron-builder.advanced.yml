@@ -1,0 +1,18 @@
+# Advanced install variant of the same app (`npm run build:win:advanced`) -
+# an assisted wizard instead of the Express one-click default in
+# electron-builder.yml. Lets the user choose per-user (no admin rights
+# needed) vs per-machine (Program Files, needs elevation) and the exact
+# install directory. Produces a separate, distinctly-named installer file;
+# nothing here changes the Express installer.
+extends: ./electron-builder.yml
+nsis:
+  oneClick: false
+  # Default selection on the wizard's install-mode page: per-user vs
+  # per-machine. false = per-user selected by default (still changeable).
+  perMachine: false
+  allowElevation: true
+  allowToChangeInstallationDirectory: true
+  artifactName: ${name}-${version}-setup-advanced.${ext}
+  shortcutName: ${productName}
+  uninstallDisplayName: ${productName}
+  createDesktopShortcut: always

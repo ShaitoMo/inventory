@@ -14,16 +14,15 @@ asarUnpack:
 win:
   executableName: Ventrack
 nsis:
-  # Assisted installer (wizard with pages) instead of the silent one-click
-  # default, so the user can review/choose the install location like a
-  # normal Windows app installer.
-  oneClick: false
-  # Default selection on the wizard's install-mode page: per-user (no admin
-  # rights needed, installs under %LocalAppData%\Programs) vs per-machine
-  # (Program Files, needs elevation, visible to every account on the PC).
-  perMachine: false
-  allowElevation: true
-  allowToChangeInstallationDirectory: true
+  # Express install (the recommended default, `npm run build:win`): no
+  # questions asked, installs system-wide to Program Files. Requires
+  # elevation (Windows prompts for it automatically), but nothing for the
+  # user to decide. The wizard variant with per-user/per-machine and a
+  # custom install path lives in electron-builder.advanced.yml
+  # (`npm run build:win:advanced`) - same app, a second installer file for
+  # users who want to choose.
+  oneClick: true
+  perMachine: true
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}
   uninstallDisplayName: ${productName}
