@@ -2,6 +2,7 @@ import { app, shell, BrowserWindow, ipcMain, Menu, type MenuItemConstructorOptio
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+import iconIco from '../../resources/icon.ico?asset'
 import { getDb } from './db/client'
 import { registerItemsIpcHandlers } from './ipc/items.ipc'
 import { registerCategoriesIpcHandlers } from './ipc/categories.ipc'
@@ -61,7 +62,16 @@ function createWindow(): void {
     height: 670,
     show: false,
     autoHideMenuBar: true,
-    ...(process.platform === 'linux' ? { icon } : {}),
+    // A packaged Windows/Mac build gets its taskbar/dock icon "for free"
+    // from the exe/.icns resource electron-builder embeds at build time, but
+    // that resource doesn't exist when running the raw electron.exe binary
+    // in dev — so the window icon must be set explicitly here too, or dev
+    // shows Electron's own default icon instead of the app's. On Windows,
+    // handing a single flat PNG to nativeImage and letting it get scaled
+    // down live for a 16-32px title bar looks blurry — icon.ico bundles
+    // pre-rendered sizes (16 up to 256) instead, so Windows just picks the
+    // right one.
+    icon: process.platform === 'win32' ? iconIco : icon,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false
