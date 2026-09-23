@@ -14,6 +14,16 @@ asarUnpack:
 win:
   executableName: Ventrack
 nsis:
+  # Assisted installer (wizard with pages) instead of the silent one-click
+  # default, so the user can review/choose the install location like a
+  # normal Windows app installer.
+  oneClick: false
+  # Default selection on the wizard's install-mode page: per-user (no admin
+  # rights needed, installs under %LocalAppData%\Programs) vs per-machine
+  # (Program Files, needs elevation, visible to every account on the PC).
+  perMachine: false
+  allowElevation: true
+  allowToChangeInstallationDirectory: true
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}
   uninstallDisplayName: ${productName}
