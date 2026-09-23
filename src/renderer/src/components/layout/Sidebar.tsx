@@ -30,7 +30,7 @@ function Sidebar(): React.JSX.Element {
 
   return (
     <nav className="flex w-56 shrink-0 flex-col gap-1 border-r border-border bg-card p-3">
-      <div className="mb-2 px-2 text-lg font-semibold">Inventory</div>
+      <div className="mb-2 px-2 text-lg font-semibold">Ventrack</div>
       {WINDOW_ORDER.map((kind) => {
         const def = WINDOW_DEFS[kind]
         return (

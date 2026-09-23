@@ -8,6 +8,21 @@ import { registerCategoriesIpcHandlers } from './ipc/categories.ipc'
 import { registerMovementsIpcHandlers } from './ipc/movements.ipc'
 import { registerUsersIpcHandlers } from './ipc/users.ipc'
 import { registerSessionIpcHandlers } from './ipc/session.ipc'
+import { seedUser } from './seedUser'
+
+// Once packaged, there's no `electron out/main/seed.js <user> <pass>` path
+// available anymore (a packaged app's entry point is fixed to this file) —
+// this flag is how an admin account gets provisioned on a machine that only
+// has the installed app. `argv.indexOf` (rather than fixed positions) works
+// whether this runs as `electron . --seed-user ...` in dev or
+// `Ventrack.exe --seed-user ...` once packaged, since the number of
+// leading args differs between the two.
+function parseSeedUserArgs(argv: string[]): { username: string; password: string } | null {
+  const flagIndex = argv.indexOf('--seed-user')
+  if (flagIndex === -1) return null
+  const [username, password] = argv.slice(flagIndex + 1)
+  return username && password ? { username, password } : null
+}
 
 // Replaces Electron's default menu (File/Edit/View/Window/Help, aimed at a
 // generic Electron scaffold - Undo/Redo/DevTools/a link to electronjs.org)
@@ -76,6 +91,18 @@ function createWindow(): void {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(async () => {
+  const seedArgs = parseSeedUserArgs(process.argv)
+  if (seedArgs) {
+    try {
+      await seedUser(join(__dirname, 'db/migrations'), seedArgs.username, seedArgs.password)
+      app.exit(0)
+    } catch (error) {
+      console.error(error)
+      app.exit(1)
+    }
+    return
+  }
+
   buildApplicationMenu()
 
   // Set app user model id for windows

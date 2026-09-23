@@ -1,14 +1,13 @@
 import { app } from 'electron'
 import { join } from 'node:path'
-import { getDb } from './db/client'
-import { createUser } from './services/users.service'
+import { seedUser } from './seedUser'
 
 // Running as `electron out/main/seed.js` (a bare script path) doesn't read
 // package.json's "name" the way `electron .` does, so app.getPath('userData')
 // would otherwise resolve to a different directory ("Electron") than the
-// real app ("inventory") — pointing this script at a different database
+// real app ("ventrack") — pointing this script at a different database
 // entirely. Must be set before anything touches a path.
-app.setName('inventory')
+app.setName('ventrack')
 
 async function main(): Promise<void> {
   const [, , username, password] = process.argv
@@ -19,9 +18,7 @@ async function main(): Promise<void> {
   }
 
   await app.whenReady()
-  const db = await getDb(join(__dirname, 'db/migrations'))
-  const user = await createUser(db, { username, password })
-  console.log('Created user:', user)
+  await seedUser(join(__dirname, 'db/migrations'), username, password)
   app.exit(0)
 }
 

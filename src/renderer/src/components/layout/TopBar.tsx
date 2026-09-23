@@ -12,7 +12,7 @@ function TopBar({ username, onLogout }: TopBarProps): React.JSX.Element {
 
   return (
     <header className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-card px-4">
-      <span className="text-sm font-medium text-muted-foreground">Inventory Management</span>
+      <span className="text-sm font-medium text-muted-foreground">Ventrack</span>
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon-sm" onClick={toggleTheme} aria-label="Toggle theme">
           {theme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
