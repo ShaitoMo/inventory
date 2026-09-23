@@ -9,6 +9,7 @@ import { registerCategoriesIpcHandlers } from './ipc/categories.ipc'
 import { registerMovementsIpcHandlers } from './ipc/movements.ipc'
 import { registerUsersIpcHandlers } from './ipc/users.ipc'
 import { registerSessionIpcHandlers } from './ipc/session.ipc'
+import { listUsers } from './services/users.service'
 import { seedUser } from './seedUser'
 
 // Once packaged, there's no `electron out/main/seed.js <user> <pass>` path
@@ -137,6 +138,21 @@ app.whenReady().then(async () => {
     return null
   })
   if (!db) return
+
+  // A machine this gets installed on has no CLI access to
+  // `Ventrack.exe --seed-user` and no other way to reach a first account -
+  // there's no in-app account creation without an existing session. So on
+  // a genuinely empty database (first launch after install), seed one
+  // default login automatically instead of shipping an app nobody can get
+  // into. The username/password are deliberately the same as the
+  // `db:seed-user` default used throughout development - change it via the
+  // Users window after logging in.
+  const existingUsers = await listUsers(db)
+  if (existingUsers.length === 0) {
+    await seedUser(join(__dirname, 'db/migrations'), 'admin', 'admin123').catch((error) =>
+      console.error('Failed to seed default admin user', error)
+    )
+  }
 
   registerItemsIpcHandlers(db)
   registerCategoriesIpcHandlers(db)
