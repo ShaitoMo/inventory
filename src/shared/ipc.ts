@@ -36,5 +36,14 @@ export const IPC_CHANNELS = {
     login: 'session:login',
     logout: 'session:logout',
     current: 'session:current'
+  },
+  settings: {
+    get: 'settings:get',
+    chooseFolder: 'settings:chooseFolder',
+    updateBackupFolder: 'settings:updateBackupFolder'
+  },
+  backup: {
+    export: 'backup:export',
+    exportSql: 'backup:exportSql'
   }
 } as const

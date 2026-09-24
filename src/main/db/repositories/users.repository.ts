@@ -13,7 +13,7 @@ async function deriveKey(password: string, salt: string): Promise<Buffer> {
   return (await scryptAsync(password, salt, 64)) as Buffer
 }
 
-async function hashPassword(password: string): Promise<string> {
+export async function hashPassword(password: string): Promise<string> {
   const salt = randomBytes(16).toString('hex')
   const derivedKey = await deriveKey(password, salt)
   return `${salt}:${derivedKey.toString('hex')}`

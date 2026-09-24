@@ -5,6 +5,8 @@ import type * as categoriesService from '../main/services/categories.service'
 import type * as movementsService from '../main/services/movements.service'
 import type * as usersService from '../main/services/users.service'
 import type * as session from '../main/session'
+import type { AppSettings } from '../main/settings'
+import type * as backupService from '../main/services/backup.service'
 
 function invoke<T>(channel: string, ...args: unknown[]): Promise<IpcResult<T>> {
   return ipcRenderer.invoke(channel, ...args)
@@ -97,6 +99,20 @@ export const api = {
     logout: () => invoke<void>(IPC_CHANNELS.session.logout),
     current: () =>
       invoke<Awaited<ReturnType<typeof session.getCurrentUser>>>(IPC_CHANNELS.session.current)
+  },
+  settings: {
+    get: () => invoke<AppSettings>(IPC_CHANNELS.settings.get),
+    chooseFolder: () => invoke<string | null>(IPC_CHANNELS.settings.chooseFolder),
+    updateBackupFolder: (backupFolder: string) =>
+      invoke<AppSettings>(IPC_CHANNELS.settings.updateBackupFolder, backupFolder)
+  },
+  backup: {
+    export: () =>
+      invoke<Awaited<ReturnType<typeof backupService.exportBackup>>>(IPC_CHANNELS.backup.export),
+    exportSql: () =>
+      invoke<Awaited<ReturnType<typeof backupService.exportSqlBackup>>>(
+        IPC_CHANNELS.backup.exportSql
+      )
   }
 }
 

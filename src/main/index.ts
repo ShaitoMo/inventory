@@ -9,6 +9,7 @@ import { registerCategoriesIpcHandlers } from './ipc/categories.ipc'
 import { registerMovementsIpcHandlers } from './ipc/movements.ipc'
 import { registerUsersIpcHandlers } from './ipc/users.ipc'
 import { registerSessionIpcHandlers } from './ipc/session.ipc'
+import { registerSettingsIpcHandlers } from './ipc/settings.ipc'
 import { listUsers } from './services/users.service'
 import { seedUser } from './seedUser'
 
@@ -159,6 +160,7 @@ app.whenReady().then(async () => {
   registerMovementsIpcHandlers(db)
   registerUsersIpcHandlers(db)
   registerSessionIpcHandlers(db)
+  registerSettingsIpcHandlers(db)
 
   createWindow()
 
