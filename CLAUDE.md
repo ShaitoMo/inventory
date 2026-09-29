@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-An Electron + React + TypeScript desktop inventory app. Data lives in an embedded Postgres (PGlite, WASM) that runs inside the Electron main process — there is no external database server or network backend. The main process is the only thing that ever touches the database; the renderer will eventually talk to it over Electron IPC.
+An Electron + React + TypeScript desktop inventory app ("ventrack"). Data lives in an embedded Postgres (PGlite, WASM) that runs inside the Electron main process — there is no external database server or network backend. The main process is the only thing that ever touches the database; the renderer talks to it over a typed Electron IPC bridge.
 
-The project is early-stage: the `src/main/db` layer (schema, migrations, repositories, tests) is built out, but the renderer is still the unmodified `electron-vite` + React scaffold and no IPC bridge exists yet between renderer and main (see Architecture below).
+The `src/main/db` layer (schema, migrations, repositories, tests), a `src/main/services` layer on top of it, and a full IPC surface (`src/main/ipc`, `src/preload`, `src/shared/ipc.ts`) are all built out, and the renderer is a real multi-window UI (see Architecture below).
 
 ## Commands
 
@@ -40,10 +40,29 @@ There is no watch mode wired for tests; `npm test` runs once. Vitest's `testTime
 
 Standard `electron-vite` three-target layout, each with its own tsconfig:
 - `src/main` — Node/Electron process. Owns the database entirely. Typechecked via `tsconfig.node.json`.
-- `src/preload` — context-bridge script. Currently only re-exposes `@electron-toolkit/preload`'s `electronAPI`; the custom `api` object in `src/preload/index.ts` is still empty.
-- `src/renderer/src` — React UI, aliased as `@renderer/*`. Typechecked via `tsconfig.web.json`. No database or business logic should live here — it goes through IPC once that's built.
+- `src/preload` — context-bridge script. `src/preload/api.ts` builds the real `api` object (one namespace per aggregate: `items`, `categories`, `movements`, `users`, `session`, `settings`, `backup`), each method calling `ipcRenderer.invoke` on a channel from `src/shared/ipc.ts` and typed off the matching main-process service's signature/return type via `Parameters`/`ReturnType`. `src/preload/index.ts` exposes it (plus `@electron-toolkit/preload`'s `electronAPI`) through `contextBridge`; `src/preload/index.d.ts` declares `Window.api: Api`.
+- `src/renderer/src` — React UI, aliased as `@renderer/*`. Typechecked via `tsconfig.web.json`. No database or business logic should live here — everything goes through `window.api.*`. A `WindowManager`/`registry` (winbox-based) opens per-feature windows: `Dashboard`, `ItemsWindow`, `CategoriesWindow`, `MovementsWindow`, `UsersWindow`, `SettingsWindow`, plus `LoginForm` and shared `components/ui/*`.
 
-**There is currently no IPC surface for inventory data.** Adding a feature that needs the renderer to read/write the DB means: add/extend an `ipcMain.handle` in `src/main`, expose a typed method through `contextBridge` in `src/preload/index.ts`, and extend the `Window.api` typing in `src/preload/index.d.ts`. Don't reach into `src/main/db` from renderer code — it's a different process and won't even bundle correctly.
+### IPC layer (`src/main/ipc`, `src/preload`, `src/shared/ipc.ts`)
+
+- **`src/shared/ipc.ts`** — the only place channel name strings live (`IPC_CHANNELS`, grouped by aggregate) and the `IpcResult<T>` envelope every handled channel resolves to: `{ ok: true; data: T } | { ok: false; error: { name; message } }`. A failed call never rejects the promise — callers must check `ok` before reading `data`.
+- **`src/main/ipc/handle.ts`** — `handle(channel, fn)` wraps `ipcMain.handle` and catches/normalizes into `IpcResult`. `protectedHandle(channel, fn)` wraps `handle` and additionally calls `requireCurrentUser()` first, passing the current user in as the handler's first argument; the actor for a mutation always comes from the session, never from the renderer's payload. Every channel is registered through one of these two, one `*.ipc.ts` file per aggregate (`items.ipc.ts`, `categories.ipc.ts`, `movements.ipc.ts`, `users.ipc.ts`, `settings.ipc.ts`) plus `session.ipc.ts`. The only unprotected channels are `session:login`, `session:logout`, and `session:current`. `src/main/index.ts` calls each `register*IpcHandlers(db)` once, after the db is open, before `createWindow()`.
+- Fields like `userId`/`createdBy` are stripped from the renderer-facing input type (via `Omit<...>`) for `items:create`, `movements:create`, and `movements:recount`, and injected server-side from the session user inside the IPC handler — see `items.ipc.ts`'s `items.create` handler for the pattern.
+- **Adding a new IPC-exposed operation**: add the channel to `IPC_CHANNELS`, add a handler in the aggregate's `*.ipc.ts` (via `protectedHandle` unless it must be reachable pre-login), add a method to `src/preload/api.ts` that calls `invoke` with that channel and infers its types off the service function, and it's automatically visible on `window.api` per `index.d.ts`'s `Api` type — no separate renderer-side typing to maintain. Don't reach into `src/main/db` or `src/main/services` from renderer code — it's a different process and won't even bundle correctly.
+
+### Services layer (`src/main/services`)
+
+Sits between repositories and IPC handlers; see `CONTEXT.md`'s glossary for the canonical definition. One file per aggregate (`items`, `categories`, `movements`, `users`, plus `backup`), each with a `*.service.test.ts`. A service function takes the same `(db, ...)` shape as its repository counterpart and is a thin re-export where there's no cross-repository logic to add (e.g. `getItem`, `listItems` in `items.service.ts` just forward to the repository inside a `try/catch`). Where a business rule spans aggregates — e.g. `createItem` needs to check the category exists before inserting — the service opens `withTransaction(db, ...)` (`src/main/db/transaction.ts`) and passes the resulting `tx` into both repository calls, so the composition is atomic.
+
+`src/main/services/errors.ts` defines `NotFoundError`, `ValidationError`, `UnauthorizedError`, and `toServiceError`, which maps a repository's plain `Error` (matched by a fixed message set) onto one of those types. Every service function funnels caught errors through `toServiceError` so callers — ultimately IPC handlers — can branch on error type/name instead of matching message strings. Repository → service → IPC is the intended call direction for main-process code; call services, not repositories, once a service exists for an aggregate.
+
+### Session (`src/main/session.ts`)
+
+An in-memory, single-process record of the currently logged-in user (`login`/`logout`/`getCurrentUser`/`requireCurrentUser`) — no persistence across restarts. `login` calls `authenticateUser` from `users.service.ts` and throws `UnauthorizedError` on bad credentials. `requireCurrentUser` (used by `protectedHandle`) throws `UnauthorizedError` if nobody is logged in.
+
+### Bootstrapping an admin account
+
+There's no unauthenticated IPC path to create a user — `users:create` is `protectedHandle`-guarded like everything else. Accounts are created outside IPC, via `src/main/seedUser.ts`, reachable two ways: `npm run db:seed-user -- <username> <password>` (dev, `src/main/seed.ts`) or `<installed exe> --seed-user <username> <password>` (packaged, parsed in `src/main/index.ts`). Additionally, `index.ts` auto-seeds one `admin`/`admin123` account on startup *only* when `users` is genuinely empty (first launch after a fresh install) — a packaged build has no terminal to run the CLI flag from. Change that password via the Users window after first login.
 
 ### Database layer (`src/main/db`)
 
