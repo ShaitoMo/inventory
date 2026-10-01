@@ -23,9 +23,11 @@ import {
   AlertDialogTitle
 } from '@/components/ui/alert-dialog'
 import InfoHint from '@/components/InfoHint'
+import Pagination from '@/components/Pagination'
 import type { IpcData } from '@/lib/ipc-types'
+import { PAGE_SIZE, fetchAllPages } from '@/lib/pagination'
 
-type User = IpcData<typeof window.api.users.list>[number]
+type User = IpcData<typeof window.api.users.list>['users'][number]
 
 const INFO_TEXT =
   'Manage who can sign in to this app. A new account needs a unique username and a password. ' +
@@ -33,6 +35,11 @@ const INFO_TEXT =
 
 function UsersWindow(): React.JSX.Element {
   const [users, setUsers] = useState<User[]>([])
+  const [page, setPage] = useState(1)
+  const [totalUsers, setTotalUsers] = useState(0)
+  // Independent of the table's current page - the add/edit form's freeText
+  // combobox should suggest every existing username.
+  const [allUsers, setAllUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<number | null>(null)
@@ -41,21 +48,35 @@ function UsersWindow(): React.JSX.Element {
   const [submitting, setSubmitting] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
 
+  const totalPages = Math.max(1, Math.ceil(totalUsers / PAGE_SIZE))
+
   const usernameOptions = useMemo(
-    () => users.map((user) => ({ value: user.username, label: user.username })),
-    [users]
+    () => allUsers.map((user) => ({ value: user.username, label: user.username })),
+    [allUsers]
   )
 
-  async function refresh(): Promise<void> {
-    setLoading(true)
-    const result = await window.api.users.list()
-    if (result.ok) {
-      setUsers(
-        [...result.data].sort((a, b) =>
-          a.username.localeCompare(b.username, undefined, { sensitivity: 'base' })
-        )
-      )
+  async function loadUsersPage(targetPage: number): Promise<void> {
+    const result = await window.api.users.list({ page: targetPage, pageSize: PAGE_SIZE })
+    if (!result.ok) return
+    const newTotalPages = Math.max(1, Math.ceil(result.data.total / PAGE_SIZE))
+    if (targetPage > newTotalPages) {
+      await loadUsersPage(newTotalPages)
+      return
     }
+    setUsers(result.data.users)
+    setTotalUsers(result.data.total)
+    setPage(targetPage)
+  }
+
+  async function refresh(targetPage = page): Promise<void> {
+    setLoading(true)
+    await Promise.all([
+      loadUsersPage(targetPage),
+      fetchAllPages(
+        (pageSize) => window.api.users.list({ pageSize }),
+        (data) => data.users
+      ).then(setAllUsers)
+    ])
     setLoading(false)
   }
 
@@ -229,6 +250,12 @@ function UsersWindow(): React.JSX.Element {
           </TableBody>
         </Table>
       </div>
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        totalRows={totalUsers}
+        onPageChange={refresh}
+      />
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>

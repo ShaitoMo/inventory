@@ -11,12 +11,26 @@ import {
 } from './users.repository'
 
 describe('listUsers', () => {
-  it('returns an empty list when there are no users', async () => {
+  it('returns an empty result when there are no users', async () => {
     const db = await createTestDb()
 
     const result = await listUsers(db)
 
-    expect(result).toEqual([])
+    expect(result).toEqual({ users: [], total: 0 })
+  })
+
+  it('orders alphabetically by username and paginates', async () => {
+    const db = await createTestDb()
+    await createUser(db, { username: 'zoe', password: 'correct horse battery staple' })
+    await createUser(db, { username: 'ada', password: 'correct horse battery staple' })
+    await createUser(db, { username: 'mo', password: 'correct horse battery staple' })
+
+    const firstPage = await listUsers(db, { page: 1, pageSize: 2 })
+    expect(firstPage.total).toBe(3)
+    expect(firstPage.users.map((u) => u.username)).toEqual(['ada', 'mo'])
+
+    const secondPage = await listUsers(db, { page: 2, pageSize: 2 })
+    expect(secondPage.users.map((u) => u.username)).toEqual(['zoe'])
   })
 })
 
@@ -33,7 +47,7 @@ describe('createUser', () => {
     expect(user).not.toHaveProperty('passwordHash')
 
     const users = await listUsers(db)
-    expect(users).toHaveLength(1)
+    expect(users.total).toBe(1)
   })
 })
 
@@ -107,6 +121,6 @@ describe('deleteUser', () => {
 
     await deleteUser(db, created.id)
 
-    expect(await listUsers(db)).toEqual([])
+    expect(await listUsers(db)).toEqual({ users: [], total: 0 })
   })
 })

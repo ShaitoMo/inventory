@@ -23,10 +23,12 @@ import {
   AlertDialogTitle
 } from '@/components/ui/alert-dialog'
 import InfoHint from '@/components/InfoHint'
+import Pagination from '@/components/Pagination'
 import type { IpcData } from '@/lib/ipc-types'
+import { PAGE_SIZE, fetchAllPages } from '@/lib/pagination'
 
 type Item = IpcData<typeof window.api.items.list>['items'][number]
-type Category = IpcData<typeof window.api.categories.list>[number]
+type Category = IpcData<typeof window.api.categories.list>['categories'][number]
 
 const INFO_TEXT =
   'Track stock items. Each item belongs to a category; its quantity is derived from Movements ' +
@@ -34,6 +36,12 @@ const INFO_TEXT =
 
 function ItemsWindow(): React.JSX.Element {
   const [items, setItems] = useState<Item[]>([])
+  const [page, setPage] = useState(1)
+  const [totalItems, setTotalItems] = useState(0)
+  // The full item/category set, independent of the items table's current
+  // page - the name/unit/category comboboxes below need every item and
+  // category to stay selectable, not just whatever's on the visible page.
+  const [allItems, setAllItems] = useState<Item[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -46,43 +54,50 @@ function ItemsWindow(): React.JSX.Element {
   const [submitting, setSubmitting] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
 
+  const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE))
+
   const categoryOptions = useMemo(
     () => categories.map((category) => ({ value: String(category.id), label: category.name })),
     [categories]
   )
   const itemNameOptions = useMemo(
-    () => items.map((item) => ({ value: item.name, label: item.name })),
-    [items]
+    () => allItems.map((item) => ({ value: item.name, label: item.name })),
+    [allItems]
   )
   const unitOptions = useMemo(() => {
-    const distinct = Array.from(new Set(items.map((item) => item.unit))).sort()
+    const distinct = Array.from(new Set(allItems.map((item) => item.unit))).sort()
     return distinct.map((value) => ({ value, label: value }))
-  }, [items])
+  }, [allItems])
 
-  async function refresh(): Promise<void> {
+  // If the page we were on no longer exists (e.g. it held the one item that
+  // just got deleted), fall back to the new last page instead of showing an
+  // empty table a user could still page backward from.
+  async function loadItemsPage(targetPage: number): Promise<void> {
+    const result = await window.api.items.list({ page: targetPage, pageSize: PAGE_SIZE })
+    if (!result.ok) return
+    const newTotalPages = Math.max(1, Math.ceil(result.data.total / PAGE_SIZE))
+    if (targetPage > newTotalPages) {
+      await loadItemsPage(newTotalPages)
+      return
+    }
+    setItems(result.data.items)
+    setTotalItems(result.data.total)
+    setPage(targetPage)
+  }
+
+  async function refresh(targetPage = page): Promise<void> {
     setLoading(true)
-    const [itemsResult, categoriesResult] = await Promise.all([
-      window.api.items.list({ pageSize: 100 }),
-      window.api.categories.list()
+    await Promise.all([
+      loadItemsPage(targetPage),
+      fetchAllPages(
+        (pageSize) => window.api.items.list({ pageSize }),
+        (data) => data.items
+      ).then(setAllItems),
+      fetchAllPages(
+        (pageSize) => window.api.categories.list({ pageSize }),
+        (data) => data.categories
+      ).then(setCategories)
     ])
-    const allItemsResult =
-      itemsResult.ok && itemsResult.data.total > itemsResult.data.items.length
-        ? await window.api.items.list({ pageSize: itemsResult.data.total })
-        : itemsResult
-    if (allItemsResult.ok) {
-      setItems(
-        [...allItemsResult.data.items].sort((a, b) =>
-          a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
-        )
-      )
-    }
-    if (categoriesResult.ok) {
-      setCategories(
-        [...categoriesResult.data].sort((a, b) =>
-          a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
-        )
-      )
-    }
     setLoading(false)
   }
 
@@ -260,7 +275,10 @@ function ItemsWindow(): React.JSX.Element {
                 const category = categories.find((c) => c.id === item.categoryId)
                 const low = item.quantity <= item.minQty
                 return (
-                  <TableRow key={item.id} className={item.id === editingId ? 'bg-muted/50' : undefined}>
+                  <TableRow
+                    key={item.id}
+                    className={item.id === editingId ? 'bg-muted/50' : undefined}
+                  >
                     <TableCell className="font-medium">{item.name}</TableCell>
                     <TableCell>{category?.name ?? '—'}</TableCell>
                     <TableCell className={low ? 'font-semibold text-destructive' : undefined}>
@@ -289,6 +307,12 @@ function ItemsWindow(): React.JSX.Element {
           </TableBody>
         </Table>
       </div>
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        totalRows={totalItems}
+        onPageChange={refresh}
+      />
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>

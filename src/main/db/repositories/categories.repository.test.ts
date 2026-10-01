@@ -11,10 +11,24 @@ import {
 import { createItem } from './items.repository'
 
 describe('listCategories', () => {
-  it('returns an empty list when there are no categories', async () => {
+  it('returns an empty result when there are no categories', async () => {
     const db = await createTestDb()
 
-    expect(await listCategories(db)).toEqual([])
+    expect(await listCategories(db)).toEqual({ categories: [], total: 0 })
+  })
+
+  it('orders alphabetically by name and paginates', async () => {
+    const db = await createTestDb()
+    await createCategory(db, { name: 'Snacks' })
+    await createCategory(db, { name: 'Beverages' })
+    await createCategory(db, { name: 'Condiments' })
+
+    const firstPage = await listCategories(db, { page: 1, pageSize: 2 })
+    expect(firstPage.total).toBe(3)
+    expect(firstPage.categories.map((c) => c.name)).toEqual(['Beverages', 'Condiments'])
+
+    const secondPage = await listCategories(db, { page: 2, pageSize: 2 })
+    expect(secondPage.categories.map((c) => c.name)).toEqual(['Snacks'])
   })
 })
 
@@ -25,7 +39,7 @@ describe('createCategory', () => {
     const category = await createCategory(db, { name: 'Beverages' })
 
     expect(category).toMatchObject({ name: 'Beverages' })
-    expect(await listCategories(db)).toHaveLength(1)
+    expect((await listCategories(db)).total).toBe(1)
   })
 })
 
@@ -62,7 +76,7 @@ describe('deleteCategory', () => {
 
     await deleteCategory(db, created.id)
 
-    expect(await listCategories(db)).toEqual([])
+    expect(await listCategories(db)).toEqual({ categories: [], total: 0 })
   })
 
   it('rejects deleting a category with existing items', async () => {

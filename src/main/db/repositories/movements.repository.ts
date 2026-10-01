@@ -64,7 +64,7 @@ export type ListMovementsFilters = {
   pageSize?: number
 }
 
-const DEFAULT_PAGE_SIZE = 20
+const DEFAULT_PAGE_SIZE = 50
 
 export async function listMovements(
   db: Db,

@@ -31,9 +31,10 @@ export const api = {
       invoke<Awaited<ReturnType<typeof itemsService.lowStockItems>>>(IPC_CHANNELS.items.lowStock)
   },
   categories: {
-    list: () =>
+    list: (filters?: categoriesService.ListCategoriesFilters) =>
       invoke<Awaited<ReturnType<typeof categoriesService.listCategories>>>(
-        IPC_CHANNELS.categories.list
+        IPC_CHANNELS.categories.list,
+        filters
       ),
     get: (id: number) =>
       invoke<Awaited<ReturnType<typeof categoriesService.getCategory>>>(
@@ -76,7 +77,8 @@ export const api = {
       )
   },
   users: {
-    list: () => invoke<Awaited<ReturnType<typeof usersService.listUsers>>>(IPC_CHANNELS.users.list),
+    list: (filters?: usersService.ListUsersFilters) =>
+      invoke<Awaited<ReturnType<typeof usersService.listUsers>>>(IPC_CHANNELS.users.list, filters),
     create: (input: Parameters<typeof usersService.createUser>[1]) =>
       invoke<Awaited<ReturnType<typeof usersService.createUser>>>(IPC_CHANNELS.users.create, input),
     update: (id: number, input: Parameters<typeof usersService.updateUser>[2]) =>

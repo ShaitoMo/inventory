@@ -14,7 +14,7 @@ export type ListItemsFilters = {
   pageSize?: number
 }
 
-const DEFAULT_PAGE_SIZE = 20
+const DEFAULT_PAGE_SIZE = 50
 
 export async function listItems(
   db: Db,
@@ -35,7 +35,7 @@ export async function listItems(
       .select()
       .from(schema.items)
       .where(where)
-      .orderBy(asc(schema.items.id))
+      .orderBy(asc(schema.items.name))
       .limit(pageSize)
       .offset((page - 1) * pageSize),
     db

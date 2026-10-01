@@ -1,12 +1,35 @@
-import { eq, sql } from 'drizzle-orm'
+import { asc, eq, sql } from 'drizzle-orm'
 import { PgliteDatabase } from 'drizzle-orm/pglite'
 import * as schema from '../schema'
 
 type Db = PgliteDatabase<typeof schema>
 type Category = typeof schema.categories.$inferSelect
 
-export async function listCategories(db: Db): Promise<Category[]> {
-  return db.select().from(schema.categories)
+export type ListCategoriesFilters = {
+  page?: number
+  pageSize?: number
+}
+
+const DEFAULT_PAGE_SIZE = 50
+
+export async function listCategories(
+  db: Db,
+  filters: ListCategoriesFilters = {}
+): Promise<{ categories: Category[]; total: number }> {
+  const page = filters.page ?? 1
+  const pageSize = filters.pageSize ?? DEFAULT_PAGE_SIZE
+
+  const [categories, [{ count }]] = await Promise.all([
+    db
+      .select()
+      .from(schema.categories)
+      .orderBy(asc(schema.categories.name))
+      .limit(pageSize)
+      .offset((page - 1) * pageSize),
+    db.select({ count: sql<number>`count(*)::int` }).from(schema.categories)
+  ])
+
+  return { categories, total: count }
 }
 
 export async function getCategory(db: Db, id: number): Promise<Category | undefined> {

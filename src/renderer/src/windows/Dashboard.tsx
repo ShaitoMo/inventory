@@ -30,13 +30,13 @@ function Dashboard(): React.JSX.Element {
     async function load(): Promise<void> {
       const [items, categories, lowStock] = await Promise.all([
         window.api.items.list({ pageSize: 1 }),
-        window.api.categories.list(),
+        window.api.categories.list({ pageSize: 1 }),
         window.api.items.lowStock()
       ])
       if (cancelled) return
       setStats({
         itemCount: items.ok ? items.data.total : 0,
-        categoryCount: categories.ok ? categories.data.length : 0,
+        categoryCount: categories.ok ? categories.data.total : 0,
         lowStockCount: lowStock.ok ? lowStock.data.length : 0
       })
     }

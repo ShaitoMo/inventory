@@ -22,9 +22,11 @@ import {
   AlertDialogTitle
 } from '@/components/ui/alert-dialog'
 import InfoHint from '@/components/InfoHint'
+import Pagination from '@/components/Pagination'
 import type { IpcData } from '@/lib/ipc-types'
+import { PAGE_SIZE, fetchAllPages } from '@/lib/pagination'
 
-type Category = IpcData<typeof window.api.categories.list>[number]
+type Category = IpcData<typeof window.api.categories.list>['categories'][number]
 
 const INFO_TEXT =
   "Group items for easier browsing and low-stock reporting. A category can't be deleted while " +
@@ -32,6 +34,11 @@ const INFO_TEXT =
 
 function CategoriesWindow(): React.JSX.Element {
   const [categories, setCategories] = useState<Category[]>([])
+  const [page, setPage] = useState(1)
+  const [totalCategories, setTotalCategories] = useState(0)
+  // The complete set, independent of the table's current page - the add/edit
+  // form's freeText combobox should suggest every existing category name.
+  const [allCategories, setAllCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<number | null>(null)
@@ -39,21 +46,35 @@ function CategoriesWindow(): React.JSX.Element {
   const [submitting, setSubmitting] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
 
+  const totalPages = Math.max(1, Math.ceil(totalCategories / PAGE_SIZE))
+
   const categoryNameOptions = useMemo(
-    () => categories.map((category) => ({ value: category.name, label: category.name })),
-    [categories]
+    () => allCategories.map((category) => ({ value: category.name, label: category.name })),
+    [allCategories]
   )
 
-  async function refresh(): Promise<void> {
-    setLoading(true)
-    const result = await window.api.categories.list()
-    if (result.ok) {
-      setCategories(
-        [...result.data].sort((a, b) =>
-          a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
-        )
-      )
+  async function loadCategoriesPage(targetPage: number): Promise<void> {
+    const result = await window.api.categories.list({ page: targetPage, pageSize: PAGE_SIZE })
+    if (!result.ok) return
+    const newTotalPages = Math.max(1, Math.ceil(result.data.total / PAGE_SIZE))
+    if (targetPage > newTotalPages) {
+      await loadCategoriesPage(newTotalPages)
+      return
     }
+    setCategories(result.data.categories)
+    setTotalCategories(result.data.total)
+    setPage(targetPage)
+  }
+
+  async function refresh(targetPage = page): Promise<void> {
+    setLoading(true)
+    await Promise.all([
+      loadCategoriesPage(targetPage),
+      fetchAllPages(
+        (pageSize) => window.api.categories.list({ pageSize }),
+        (data) => data.categories
+      ).then(setAllCategories)
+    ])
     setLoading(false)
   }
 
@@ -195,6 +216,12 @@ function CategoriesWindow(): React.JSX.Element {
           </TableBody>
         </Table>
       </div>
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        totalRows={totalCategories}
+        onPageChange={refresh}
+      />
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>

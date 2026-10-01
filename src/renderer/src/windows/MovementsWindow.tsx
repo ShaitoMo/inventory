@@ -13,11 +13,13 @@ import {
   TableRow
 } from '@/components/ui/table'
 import InfoHint from '@/components/InfoHint'
+import Pagination from '@/components/Pagination'
 import type { IpcData } from '@/lib/ipc-types'
+import { PAGE_SIZE, fetchAllPages } from '@/lib/pagination'
 
 type Movement = IpcData<typeof window.api.movements.list>['movements'][number]
 type Item = IpcData<typeof window.api.items.list>['items'][number]
-type User = IpcData<typeof window.api.users.list>[number]
+type User = IpcData<typeof window.api.users.list>['users'][number]
 type Mode = 'in' | 'out' | 'adjust'
 
 const INFO_TEXT =
@@ -33,6 +35,11 @@ const MODE_OPTIONS = [
 
 function MovementsWindow(): React.JSX.Element {
   const [movements, setMovements] = useState<Movement[]>([])
+  const [page, setPage] = useState(1)
+  const [totalMovements, setTotalMovements] = useState(0)
+  // Independent of the movements table's current page - any movement on any
+  // page can reference any item/user, and the item picker below must let you
+  // record a movement against any item, so these always hold everything.
   const [items, setItems] = useState<Item[]>([])
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
@@ -44,6 +51,8 @@ function MovementsWindow(): React.JSX.Element {
   const [note, setNote] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
+  const totalPages = Math.max(1, Math.ceil(totalMovements / PAGE_SIZE))
+
   const itemOptions = useMemo(
     () => items.map((item) => ({ value: String(item.id), label: item.name })),
     [items]
@@ -54,20 +63,32 @@ function MovementsWindow(): React.JSX.Element {
     [movements]
   )
 
-  async function refresh(): Promise<void> {
+  async function loadMovementsPage(targetPage: number): Promise<void> {
+    const result = await window.api.movements.list({ page: targetPage, pageSize: PAGE_SIZE })
+    if (!result.ok) return
+    const newTotalPages = Math.max(1, Math.ceil(result.data.total / PAGE_SIZE))
+    if (targetPage > newTotalPages) {
+      await loadMovementsPage(newTotalPages)
+      return
+    }
+    setMovements(result.data.movements)
+    setTotalMovements(result.data.total)
+    setPage(targetPage)
+  }
+
+  async function refresh(targetPage = page): Promise<void> {
     setLoading(true)
-    const [movementsResult, itemsResult, usersResult] = await Promise.all([
-      window.api.movements.list({ pageSize: 100 }),
-      window.api.items.list({ pageSize: 100 }),
-      window.api.users.list()
+    await Promise.all([
+      loadMovementsPage(targetPage),
+      fetchAllPages(
+        (pageSize) => window.api.items.list({ pageSize }),
+        (data) => data.items
+      ).then(setItems),
+      fetchAllPages(
+        (pageSize) => window.api.users.list({ pageSize }),
+        (data) => data.users
+      ).then(setUsers)
     ])
-    const allItemsResult =
-      itemsResult.ok && itemsResult.data.total > itemsResult.data.items.length
-        ? await window.api.items.list({ pageSize: itemsResult.data.total })
-        : itemsResult
-    if (movementsResult.ok) setMovements(movementsResult.data.movements)
-    if (allItemsResult.ok) setItems(allItemsResult.data.items)
-    if (usersResult.ok) setUsers(usersResult.data)
     setLoading(false)
   }
 
@@ -142,7 +163,9 @@ function MovementsWindow(): React.JSX.Element {
           />
         </div>
         <div className="flex flex-col gap-1">
-          <Label htmlFor="movement-quantity">{mode === 'adjust' ? 'Adjust by (+/-)' : 'Quantity'}</Label>
+          <Label htmlFor="movement-quantity">
+            {mode === 'adjust' ? 'Adjust by (+/-)' : 'Quantity'}
+          </Label>
           <Input
             id="movement-quantity"
             type="number"
@@ -234,6 +257,12 @@ function MovementsWindow(): React.JSX.Element {
           </TableBody>
         </Table>
       </div>
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        totalRows={totalMovements}
+        onPageChange={refresh}
+      />
     </div>
   )
 }

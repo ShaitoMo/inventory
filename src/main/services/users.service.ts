@@ -2,9 +2,14 @@ import { Db } from '../db/types'
 import * as usersRepository from '../db/repositories/users.repository'
 import { NotFoundError, toServiceError } from './errors'
 
-export async function listUsers(db: Db): ReturnType<typeof usersRepository.listUsers> {
+export type { ListUsersFilters } from '../db/repositories/users.repository'
+
+export async function listUsers(
+  db: Db,
+  filters?: usersRepository.ListUsersFilters
+): ReturnType<typeof usersRepository.listUsers> {
   try {
-    return await usersRepository.listUsers(db)
+    return await usersRepository.listUsers(db, filters)
   } catch (error) {
     throw toServiceError(error)
   }

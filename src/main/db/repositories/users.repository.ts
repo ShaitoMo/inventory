@@ -1,6 +1,6 @@
 import { randomBytes, scrypt, timingSafeEqual } from 'node:crypto'
 import { promisify } from 'node:util'
-import { eq } from 'drizzle-orm'
+import { asc, eq, sql } from 'drizzle-orm'
 import { PgliteDatabase } from 'drizzle-orm/pglite'
 import * as schema from '../schema'
 
@@ -32,8 +32,31 @@ const userSelection = {
   createdAt: schema.users.createdAt
 }
 
-export async function listUsers(db: Db): Promise<PublicUser[]> {
-  return db.select(userSelection).from(schema.users)
+export type ListUsersFilters = {
+  page?: number
+  pageSize?: number
+}
+
+const DEFAULT_PAGE_SIZE = 50
+
+export async function listUsers(
+  db: Db,
+  filters: ListUsersFilters = {}
+): Promise<{ users: PublicUser[]; total: number }> {
+  const page = filters.page ?? 1
+  const pageSize = filters.pageSize ?? DEFAULT_PAGE_SIZE
+
+  const [users, [{ count }]] = await Promise.all([
+    db
+      .select(userSelection)
+      .from(schema.users)
+      .orderBy(asc(schema.users.username))
+      .limit(pageSize)
+      .offset((page - 1) * pageSize),
+    db.select({ count: sql<number>`count(*)::int` }).from(schema.users)
+  ])
+
+  return { users, total: count }
 }
 
 export async function createUser(

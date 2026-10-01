@@ -4,7 +4,11 @@ import { IPC_CHANNELS } from '../../shared/ipc'
 import { protectedHandle } from './handle'
 
 export function registerCategoriesIpcHandlers(db: Db): void {
-  protectedHandle(IPC_CHANNELS.categories.list, () => categoriesService.listCategories(db))
+  protectedHandle(
+    IPC_CHANNELS.categories.list,
+    (_user, filters?: categoriesService.ListCategoriesFilters) =>
+      categoriesService.listCategories(db, filters)
+  )
   protectedHandle(IPC_CHANNELS.categories.get, (_user, id: number) =>
     categoriesService.getCategory(db, id)
   )

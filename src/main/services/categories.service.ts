@@ -2,11 +2,14 @@ import { Db } from '../db/types'
 import * as categoriesRepository from '../db/repositories/categories.repository'
 import { NotFoundError, toServiceError } from './errors'
 
+export type { ListCategoriesFilters } from '../db/repositories/categories.repository'
+
 export async function listCategories(
-  db: Db
+  db: Db,
+  filters?: categoriesRepository.ListCategoriesFilters
 ): ReturnType<typeof categoriesRepository.listCategories> {
   try {
-    return await categoriesRepository.listCategories(db)
+    return await categoriesRepository.listCategories(db, filters)
   } catch (error) {
     throw toServiceError(error)
   }

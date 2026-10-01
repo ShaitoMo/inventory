@@ -152,8 +152,8 @@ app.whenReady().then(async () => {
   // into. The username/password are deliberately the same as the
   // `db:seed-user` default used throughout development - change it via the
   // Users window after logging in.
-  const existingUsers = await listUsers(db)
-  if (existingUsers.length === 0) {
+  const existingUsers = await listUsers(db, { pageSize: 1 })
+  if (existingUsers.total === 0) {
     await seedUser(join(__dirname, 'db/migrations'), 'admin', 'admin123').catch((error) =>
       logError('Failed to seed default admin user', error)
     )

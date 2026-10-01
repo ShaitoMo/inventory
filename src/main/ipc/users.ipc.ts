@@ -4,7 +4,9 @@ import { IPC_CHANNELS } from '../../shared/ipc'
 import { protectedHandle } from './handle'
 
 export function registerUsersIpcHandlers(db: Db): void {
-  protectedHandle(IPC_CHANNELS.users.list, () => usersService.listUsers(db))
+  protectedHandle(IPC_CHANNELS.users.list, (_user, filters?: usersService.ListUsersFilters) =>
+    usersService.listUsers(db, filters)
+  )
   protectedHandle(
     IPC_CHANNELS.users.create,
     (_user, input: Parameters<typeof usersService.createUser>[1]) =>

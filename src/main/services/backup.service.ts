@@ -8,6 +8,24 @@ import { listCategories } from '../db/repositories/categories.repository'
 import { hashPassword, listUsers } from '../db/repositories/users.repository'
 import { toServiceError } from './errors'
 
+// listCategories/listUsers are paginated for the UI, defaulting to one
+// page - a backup needs every row, not just the first page, so this probes
+// the real total with a cheap first call and then asks for exactly that
+// many rows, rather than guessing a "large enough" page size.
+async function listAllCategories(
+  db: Db
+): Promise<Awaited<ReturnType<typeof listCategories>>['categories']> {
+  const first = await listCategories(db, { pageSize: 1 })
+  if (first.total === 0) return first.categories
+  return (await listCategories(db, { pageSize: first.total })).categories
+}
+
+async function listAllUsers(db: Db): Promise<Awaited<ReturnType<typeof listUsers>>['users']> {
+  const first = await listUsers(db, { pageSize: 1 })
+  if (first.total === 0) return first.users
+  return (await listUsers(db, { pageSize: first.total })).users
+}
+
 const ITEM_COLUMNS = [
   { header: 'ID', key: 'id' },
   { header: 'Name', key: 'name' },
@@ -77,9 +95,9 @@ export async function exportBackup(db: Db, folder: string): Promise<{ filePath: 
   try {
     const [items, categories, movements, users] = await Promise.all([
       db.select().from(schema.items).orderBy(schema.items.id),
-      listCategories(db),
+      listAllCategories(db),
       db.select().from(schema.stockMovements).orderBy(schema.stockMovements.id),
-      listUsers(db)
+      listAllUsers(db)
     ])
 
     const workbook = new ExcelJS.Workbook()
@@ -132,9 +150,9 @@ export async function exportSqlBackup(db: Db, folder: string): Promise<{ filePat
   try {
     const [items, categories, movements, users] = await Promise.all([
       db.select().from(schema.items).orderBy(schema.items.id),
-      listCategories(db),
+      listAllCategories(db),
       db.select().from(schema.stockMovements).orderBy(schema.stockMovements.id),
-      listUsers(db)
+      listAllUsers(db)
     ])
 
     // `password_hash` is NOT NULL and never leaves the app - a restored
