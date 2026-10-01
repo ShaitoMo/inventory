@@ -1,9 +1,8 @@
-import { app } from 'electron'
-import { join } from 'node:path'
 import { PGlite } from '@electric-sql/pglite'
 import { drizzle, PgliteDatabase } from 'drizzle-orm/pglite'
 import { migrate } from 'drizzle-orm/pglite/migrator'
 import * as schema from './schema'
+import { prepareDataDir } from './dataDir'
 
 let db: PgliteDatabase<typeof schema> | null = null
 
@@ -16,7 +15,7 @@ let db: PgliteDatabase<typeof schema> | null = null
 export async function getDb(migrationsFolder: string): Promise<PgliteDatabase<typeof schema>> {
   if (db) return db
 
-  const client = new PGlite(join(app.getPath('userData'), 'pgdata'))
+  const client = new PGlite(await prepareDataDir())
   await client.exec("SET TIME ZONE 'UTC'")
   const instance = drizzle(client, { schema })
 

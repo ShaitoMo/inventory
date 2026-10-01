@@ -1,9 +1,7 @@
 import { appendFile, mkdir, rename, stat } from 'node:fs/promises'
-import { execFile } from 'node:child_process'
 import { dirname, join } from 'node:path'
-import { inspect, promisify } from 'node:util'
-
-const execFileAsync = promisify(execFile)
+import { inspect } from 'node:util'
+import { grantWriteAccessForAllUsers } from './windowsAcl'
 
 export type LogLevel = 'info' | 'warn' | 'error'
 
@@ -48,12 +46,6 @@ export async function appendLog(
   await appendFile(filePath, entry)
 }
 
-// Windows' well-known SID for the built-in "Users" group - using the SID
-// instead of the literal name avoids breaking on non-English Windows
-// installs (e.g. "Utilisateurs" on French Windows), where the group name
-// is localized but the SID never changes.
-const WINDOWS_USERS_GROUP_SID = '*S-1-5-32-545'
-
 // Every account on the machine shares one install, and logs need to stay
 // readable/writable no matter who's signed in when the app runs - not just
 // whoever happened to launch it first. ProgramData (and its macOS/Linux
@@ -67,24 +59,6 @@ export function resolveSystemLogDir(platform: NodeJS.Platform = process.platform
       return '/Library/Logs/ventrack'
     default:
       return '/var/log/ventrack'
-  }
-}
-
-// Whichever account's process creates the log directory first becomes its
-// owner, and Windows' default ACL inheritance would otherwise leave every
-// other account on the machine unable to write to it. An object's owner can
-// always adjust its own ACL regardless of admin rights, so granting Modify
-// to the built-in Users group here - once per startup, not once per log
-// line - keeps the directory writable by anyone on the machine afterwards.
-// Best-effort: a failure here shouldn't stop the app from logging to
-// console, so it's swallowed the same way write() below swallows file
-// errors.
-async function grantWriteAccessForAllUsers(dir: string): Promise<void> {
-  if (process.platform !== 'win32') return
-  try {
-    await execFileAsync('icacls', [dir, '/grant', `${WINDOWS_USERS_GROUP_SID}:(OI)(CI)M`, '/T'])
-  } catch (error) {
-    console.error('Failed to widen log directory permissions', error)
   }
 }
 
@@ -109,7 +83,8 @@ export function initLogger(filePath: string): void {
 }
 
 function write(level: LogLevel, message: string, detail?: unknown): Promise<void> {
-  const consoleMethod = level === 'error' ? console.error : level === 'warn' ? console.warn : console.log
+  const consoleMethod =
+    level === 'error' ? console.error : level === 'warn' ? console.warn : console.log
   consoleMethod(message, detail ?? '')
 
   if (!activeLogFilePath) return Promise.resolve()

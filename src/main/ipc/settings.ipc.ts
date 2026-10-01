@@ -1,21 +1,29 @@
-import { app, dialog } from 'electron'
+import { dialog } from 'electron'
 import { join } from 'node:path'
 import { Db } from '../db/types'
-import { readSettings, writeSettings, type AppSettings } from '../settings'
+import { prepareSettingsFilePath, readSettings, writeSettings, type AppSettings } from '../settings'
+import { resolveSystemAppDataRoot } from '../systemPaths'
 import { exportBackup, exportSqlBackup } from '../services/backup.service'
 import { IPC_CHANNELS } from '../../shared/ipc'
 import { protectedHandle } from './handle'
 
-function settingsFilePath(): string {
-  return join(app.getPath('userData'), 'settings.json')
-}
-
-function defaultBackupFolder(): string {
-  return join(app.getPath('documents'), 'Ventrack Backups')
+// Shared across every Windows account on the machine, same as the backup
+// folder preference itself (see settings.ts) - Public\Documents is the
+// standard discoverable "everyone can find this" location on Windows,
+// unlike the current user's own Documents folder.
+function defaultBackupFolder(platform: NodeJS.Platform = process.platform): string {
+  switch (platform) {
+    case 'win32':
+      return join(process.env.Public ?? 'C:\\Users\\Public', 'Documents', 'Ventrack Backups')
+    case 'darwin':
+      return '/Users/Shared/Ventrack Backups'
+    default:
+      return join(resolveSystemAppDataRoot(platform), 'backups')
+  }
 }
 
 async function loadSettings(): Promise<AppSettings> {
-  return readSettings(settingsFilePath(), defaultBackupFolder())
+  return readSettings(await prepareSettingsFilePath(), defaultBackupFolder())
 }
 
 export function registerSettingsIpcHandlers(db: Db): void {
@@ -30,7 +38,7 @@ export function registerSettingsIpcHandlers(db: Db): void {
 
   protectedHandle(IPC_CHANNELS.settings.updateBackupFolder, async (_user, backupFolder: string) => {
     const settings: AppSettings = { backupFolder }
-    await writeSettings(settingsFilePath(), settings)
+    await writeSettings(await prepareSettingsFilePath(), settings)
     return settings
   })
 
