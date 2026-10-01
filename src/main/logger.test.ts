@@ -2,7 +2,7 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { appendLog, formatLogEntry } from './logger'
+import { appendLog, formatLogEntry, resolveSystemLogDir } from './logger'
 
 describe('formatLogEntry', () => {
   it('includes the level, message, and timestamp with no detail', () => {
@@ -21,6 +21,32 @@ describe('formatLogEntry', () => {
     expect(entry).toContain('Failed query: insert into "items"')
     expect(entry).toContain('duplicate key value violates unique constraint')
     expect(entry).toContain("params: [ '1 bac 6045 Gri', 13 ]")
+  })
+})
+
+describe('resolveSystemLogDir', () => {
+  const originalProgramData = process.env.ProgramData
+
+  afterEach(() => {
+    if (originalProgramData === undefined) delete process.env.ProgramData
+    else process.env.ProgramData = originalProgramData
+  })
+
+  it('uses ProgramData on Windows so logs are not scoped to one user account', () => {
+    process.env.ProgramData = 'C:\\ProgramData'
+
+    expect(resolveSystemLogDir('win32')).toBe('C:\\ProgramData\\ventrack\\logs')
+  })
+
+  it('falls back to a fixed path if ProgramData is unset', () => {
+    delete process.env.ProgramData
+
+    expect(resolveSystemLogDir('win32')).toBe('C:\\ProgramData\\ventrack\\logs')
+  })
+
+  it('uses the standard system log directory on macOS and Linux', () => {
+    expect(resolveSystemLogDir('darwin')).toBe('/Library/Logs/ventrack')
+    expect(resolveSystemLogDir('linux')).toBe('/var/log/ventrack')
   })
 })
 

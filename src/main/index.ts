@@ -12,7 +12,7 @@ import { registerSessionIpcHandlers } from './ipc/session.ipc'
 import { registerSettingsIpcHandlers } from './ipc/settings.ipc'
 import { listUsers } from './services/users.service'
 import { seedUser } from './seedUser'
-import { initLogger, logError, logInfo } from './logger'
+import { initLogger, logError, logInfo, prepareLogDirectory } from './logger'
 
 // Once packaged, there's no `electron out/main/seed.js <user> <pass>` path
 // available anymore (a packaged app's entry point is fixed to this file) —
@@ -104,7 +104,7 @@ function createWindow(): void {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(async () => {
-  initLogger(join(app.getPath('userData'), 'logs', 'main.log'))
+  initLogger(await prepareLogDirectory())
   await logInfo('App started', { version: app.getVersion(), platform: process.platform })
 
   const seedArgs = parseSeedUserArgs(process.argv)
