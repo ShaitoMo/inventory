@@ -1,4 +1,4 @@
-import { and, eq, ilike, lte, sql } from 'drizzle-orm'
+import { and, asc, eq, ilike, lte, sql } from 'drizzle-orm'
 import { PgliteDatabase } from 'drizzle-orm/pglite'
 import * as schema from '../schema'
 
@@ -35,6 +35,7 @@ export async function listItems(
       .select()
       .from(schema.items)
       .where(where)
+      .orderBy(asc(schema.items.id))
       .limit(pageSize)
       .offset((page - 1) * pageSize),
     db

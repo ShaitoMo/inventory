@@ -12,6 +12,7 @@ import { registerSessionIpcHandlers } from './ipc/session.ipc'
 import { registerSettingsIpcHandlers } from './ipc/settings.ipc'
 import { listUsers } from './services/users.service'
 import { seedUser } from './seedUser'
+import { initLogger, logError, logInfo } from './logger'
 
 // Once packaged, there's no `electron out/main/seed.js <user> <pass>` path
 // available anymore (a packaged app's entry point is fixed to this file) —
@@ -103,13 +104,16 @@ function createWindow(): void {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(async () => {
+  initLogger(join(app.getPath('userData'), 'logs', 'main.log'))
+  await logInfo('App started', { version: app.getVersion(), platform: process.platform })
+
   const seedArgs = parseSeedUserArgs(process.argv)
   if (seedArgs) {
     try {
       await seedUser(join(__dirname, 'db/migrations'), seedArgs.username, seedArgs.password)
       app.exit(0)
     } catch (error) {
-      console.error(error)
+      await logError('Failed to seed user via --seed-user', error)
       app.exit(1)
     }
     return
@@ -133,8 +137,8 @@ app.whenReady().then(async () => {
   // IPC test
   ipcMain.on('ping', () => console.log('pong'))
 
-  const db = await getDb(join(__dirname, 'db/migrations')).catch((error) => {
-    console.error('Failed to open database', error)
+  const db = await getDb(join(__dirname, 'db/migrations')).catch(async (error) => {
+    await logError('Failed to open database', error)
     app.quit()
     return null
   })
@@ -151,7 +155,7 @@ app.whenReady().then(async () => {
   const existingUsers = await listUsers(db)
   if (existingUsers.length === 0) {
     await seedUser(join(__dirname, 'db/migrations'), 'admin', 'admin123').catch((error) =>
-      console.error('Failed to seed default admin user', error)
+      logError('Failed to seed default admin user', error)
     )
   }
 

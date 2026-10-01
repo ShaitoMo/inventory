@@ -65,9 +65,13 @@ function ItemsWindow(): React.JSX.Element {
       window.api.items.list({ pageSize: 100 }),
       window.api.categories.list()
     ])
-    if (itemsResult.ok) {
+    const allItemsResult =
+      itemsResult.ok && itemsResult.data.total > itemsResult.data.items.length
+        ? await window.api.items.list({ pageSize: itemsResult.data.total })
+        : itemsResult
+    if (allItemsResult.ok) {
       setItems(
-        [...itemsResult.data.items].sort((a, b) =>
+        [...allItemsResult.data.items].sort((a, b) =>
           a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
         )
       )

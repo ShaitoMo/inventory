@@ -61,8 +61,12 @@ function MovementsWindow(): React.JSX.Element {
       window.api.items.list({ pageSize: 100 }),
       window.api.users.list()
     ])
+    const allItemsResult =
+      itemsResult.ok && itemsResult.data.total > itemsResult.data.items.length
+        ? await window.api.items.list({ pageSize: itemsResult.data.total })
+        : itemsResult
     if (movementsResult.ok) setMovements(movementsResult.data.movements)
-    if (itemsResult.ok) setItems(itemsResult.data.items)
+    if (allItemsResult.ok) setItems(allItemsResult.data.items)
     if (usersResult.ok) setUsers(usersResult.data)
     setLoading(false)
   }
