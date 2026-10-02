@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { prepareDataDir, resolveSystemDataDir } from './dataDir'
+import { findOtherAccountsWithLegacyData, prepareDataDir, resolveSystemDataDir } from './dataDir'
 
 describe('resolveSystemDataDir', () => {
   const originalProgramData = process.env.ProgramData
@@ -41,7 +41,7 @@ describe('prepareDataDir', () => {
     await mkdir(legacyDataDir, { recursive: true })
     await writeFile(join(legacyDataDir, 'PG_VERSION'), '16')
 
-    const dir = await prepareDataDir('win32', legacyDataDir)
+    const dir = await prepareDataDir('win32', legacyDataDir, join(tempDir, 'Users'))
 
     expect(dir).toBe(join(tempDir, 'ProgramData', 'ventrack', 'pgdata'))
     expect(await readFile(join(dir, 'PG_VERSION'), 'utf-8')).toBe('16')
@@ -59,7 +59,7 @@ describe('prepareDataDir', () => {
     await mkdir(legacyDataDir, { recursive: true })
     await writeFile(join(legacyDataDir, 'PG_VERSION'), 'legacy')
 
-    await prepareDataDir('win32', legacyDataDir)
+    await prepareDataDir('win32', legacyDataDir, join(tempDir, 'Users'))
 
     expect(await readFile(join(sharedDataDir, 'PG_VERSION'), 'utf-8')).toBe('shared')
   })
@@ -69,9 +69,48 @@ describe('prepareDataDir', () => {
     process.env.ProgramData = join(tempDir, 'ProgramData')
     const legacyDataDir = join(tempDir, 'legacy-userdata', 'pgdata')
 
-    const dir = await prepareDataDir('win32', legacyDataDir)
+    const dir = await prepareDataDir('win32', legacyDataDir, join(tempDir, 'Users'))
 
     expect(dir).toBe(join(tempDir, 'ProgramData', 'ventrack', 'pgdata'))
     await expect(readFile(join(dir, 'PG_VERSION'), 'utf-8')).rejects.toThrow()
+  })
+})
+
+describe('findOtherAccountsWithLegacyData', () => {
+  let tempDir: string
+
+  afterEach(async () => {
+    if (tempDir) await rm(tempDir, { recursive: true, force: true })
+  })
+
+  async function seedProfile(usersRoot: string, name: string, withData: boolean): Promise<string> {
+    const dataDir = join(usersRoot, name, 'AppData', 'Roaming', 'ventrack', 'pgdata')
+    if (withData) await mkdir(dataDir, { recursive: true })
+    else await mkdir(join(usersRoot, name), { recursive: true })
+    return dataDir
+  }
+
+  it('reports other accounts that have their own ventrack data', async () => {
+    tempDir = await mkdtemp(join(tmpdir(), 'ventrack-users-'))
+    const current = await seedProfile(tempDir, 'alice', true)
+    await seedProfile(tempDir, 'bob', true)
+    await seedProfile(tempDir, 'carol', false)
+
+    expect(await findOtherAccountsWithLegacyData(tempDir, current)).toEqual(['bob'])
+  })
+
+  it('ignores well-known non-account profile folders', async () => {
+    tempDir = await mkdtemp(join(tmpdir(), 'ventrack-users-'))
+    const current = await seedProfile(tempDir, 'alice', true)
+    await seedProfile(tempDir, 'Public', true)
+    await seedProfile(tempDir, 'Default', true)
+
+    expect(await findOtherAccountsWithLegacyData(tempDir, current)).toEqual([])
+  })
+
+  it('returns an empty list when the users root cannot be read', async () => {
+    tempDir = await mkdtemp(join(tmpdir(), 'ventrack-users-'))
+
+    expect(await findOtherAccountsWithLegacyData(join(tempDir, 'missing'), 'x')).toEqual([])
   })
 })

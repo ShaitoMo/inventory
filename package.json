@@ -1,6 +1,6 @@
 {
   "name": "ventrack",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Desktop inventory management app for tracking items, categories, and stock movements.",
   "main": "./out/main/index.js",
   "author": "M^2",
