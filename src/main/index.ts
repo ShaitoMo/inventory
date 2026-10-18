@@ -10,6 +10,7 @@ import { registerMovementsIpcHandlers } from './ipc/movements.ipc'
 import { registerUsersIpcHandlers } from './ipc/users.ipc'
 import { registerSessionIpcHandlers } from './ipc/session.ipc'
 import { registerSettingsIpcHandlers } from './ipc/settings.ipc'
+import { registerReportsIpcHandlers } from './ipc/reports.ipc'
 import { listUsers } from './services/users.service'
 import { seedUser } from './seedUser'
 import { initLogger, logError, logInfo, prepareLogDirectory } from './logger'
@@ -165,6 +166,7 @@ app.whenReady().then(async () => {
   registerUsersIpcHandlers(db)
   registerSessionIpcHandlers(db)
   registerSettingsIpcHandlers(db)
+  registerReportsIpcHandlers(db)
 
   createWindow()
 

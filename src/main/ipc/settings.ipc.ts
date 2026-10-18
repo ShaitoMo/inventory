@@ -1,29 +1,40 @@
 import { dialog } from 'electron'
 import { join } from 'node:path'
 import { Db } from '../db/types'
-import { prepareSettingsFilePath, readSettings, writeSettings, type AppSettings } from '../settings'
+import { prepareSettingsFilePath, readSettings, updateSettings, type AppSettings } from '../settings'
 import { resolveSystemAppDataRoot } from '../systemPaths'
 import { exportBackup, exportSqlBackup } from '../services/backup.service'
 import { IPC_CHANNELS } from '../../shared/ipc'
 import { protectedHandle } from './handle'
 
-// Shared across every Windows account on the machine, same as the backup
-// folder preference itself (see settings.ts) - Public\Documents is the
+// Shared across every Windows account on the machine, same as the folder
+// preferences themselves (see settings.ts) - Public\Documents is the
 // standard discoverable "everyone can find this" location on Windows,
-// unlike the current user's own Documents folder.
-function defaultBackupFolder(platform: NodeJS.Platform = process.platform): string {
+// unlike the current user's own Documents folder. Each feature gets its own
+// folder under it (or its own subfolder of the app-data root elsewhere).
+function defaultFolder(
+  names: { shared: string; subfolder: string },
+  platform: NodeJS.Platform = process.platform
+): string {
   switch (platform) {
     case 'win32':
-      return join(process.env.Public ?? 'C:\\Users\\Public', 'Documents', 'Ventrack Backups')
+      return join(process.env.Public ?? 'C:\\Users\\Public', 'Documents', names.shared)
     case 'darwin':
-      return '/Users/Shared/Ventrack Backups'
+      return `/Users/Shared/${names.shared}`
     default:
-      return join(resolveSystemAppDataRoot(platform), 'backups')
+      return join(resolveSystemAppDataRoot(platform), names.subfolder)
   }
 }
 
-async function loadSettings(): Promise<AppSettings> {
-  return readSettings(await prepareSettingsFilePath(), defaultBackupFolder())
+function defaultSettings(): AppSettings {
+  return {
+    backupFolder: defaultFolder({ shared: 'Ventrack Backups', subfolder: 'backups' }),
+    reportsFolder: defaultFolder({ shared: 'Ventrack Reports', subfolder: 'reports' })
+  }
+}
+
+export async function loadSettings(): Promise<AppSettings> {
+  return readSettings(await prepareSettingsFilePath(), defaultSettings())
 }
 
 export function registerSettingsIpcHandlers(db: Db): void {
@@ -36,11 +47,13 @@ export function registerSettingsIpcHandlers(db: Db): void {
     return result.canceled ? null : result.filePaths[0]
   })
 
-  protectedHandle(IPC_CHANNELS.settings.updateBackupFolder, async (_user, backupFolder: string) => {
-    const settings: AppSettings = { backupFolder }
-    await writeSettings(await prepareSettingsFilePath(), settings)
-    return settings
-  })
+  protectedHandle(IPC_CHANNELS.settings.updateBackupFolder, async (_user, backupFolder: string) =>
+    updateSettings(await prepareSettingsFilePath(), defaultSettings(), { backupFolder })
+  )
+
+  protectedHandle(IPC_CHANNELS.settings.updateReportsFolder, async (_user, reportsFolder: string) =>
+    updateSettings(await prepareSettingsFilePath(), defaultSettings(), { reportsFolder })
+  )
 
   protectedHandle(IPC_CHANNELS.backup.export, async () => {
     const settings = await loadSettings()

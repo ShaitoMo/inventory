@@ -14,6 +14,10 @@ A module in `src/main/services/` that sits between repositories and the IPC boun
 
 `src/main/session.ts` — an in-memory, single-process record of the currently logged-in user (`login`/`logout`/`getCurrentUser`/`requireCurrentUser`). Lives only for the life of the running app; there is no persistence across restarts. It is the source of truth for "who is acting" — IPC handlers derive the actor id from it rather than trusting whatever a mutation's payload claims.
 
+### Monthly report
+
+A read-only summary of stock movement for one calendar month, grouped by category and then by item, produced by `reports.repository.ts` and shown in the Reports window. Per item it reports **opening** (quantity at the start of the month), **in**, **out**, **adjust** (net signed recount deltas) and **closing** (quantity at the end of the month). Opening and closing are derived from the current `items.quantity` by walking backwards through movements, since historical balances are not stored; items created after the month ends are left out, and idle items (no movements that month) are still listed unless the report is asked for `onlyWithMovements`, in which case idle items and any category left empty are dropped and totals cover only the items kept.
+
 ## Decisions
 
 - Repository → service → IPC is the intended call direction for main-process code. Code outside `src/main/services/` should call services, not repositories, once a service exists for that aggregate.

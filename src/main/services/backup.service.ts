@@ -65,7 +65,7 @@ function pad(value: number): string {
   return value.toString().padStart(2, '0')
 }
 
-function backupTimestamp(now: Date): string {
+export function backupTimestamp(now: Date): string {
   return (
     `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}` +
     `_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`
@@ -80,15 +80,16 @@ function sqlBackupFileName(now = new Date()): string {
   return `ventrack-backup-${backupTimestamp(now)}.sql`
 }
 
-function addSheet(
+export function addSheet(
   workbook: ExcelJS.Workbook,
   name: string,
   columns: { header: string; key: string }[],
   rows: Record<string, unknown>[]
-): void {
+): ExcelJS.Worksheet {
   const sheet = workbook.addWorksheet(name)
   sheet.columns = columns
   sheet.addRows(rows)
+  return sheet
 }
 
 export async function exportBackup(db: Db, folder: string): Promise<{ filePath: string }> {

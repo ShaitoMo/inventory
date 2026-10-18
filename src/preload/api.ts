@@ -7,6 +7,7 @@ import type * as usersService from '../main/services/users.service'
 import type * as session from '../main/session'
 import type { AppSettings } from '../main/settings'
 import type * as backupService from '../main/services/backup.service'
+import type * as reportsService from '../main/services/reports.service'
 
 function invoke<T>(channel: string, ...args: unknown[]): Promise<IpcResult<T>> {
   return ipcRenderer.invoke(channel, ...args)
@@ -106,7 +107,9 @@ export const api = {
     get: () => invoke<AppSettings>(IPC_CHANNELS.settings.get),
     chooseFolder: () => invoke<string | null>(IPC_CHANNELS.settings.chooseFolder),
     updateBackupFolder: (backupFolder: string) =>
-      invoke<AppSettings>(IPC_CHANNELS.settings.updateBackupFolder, backupFolder)
+      invoke<AppSettings>(IPC_CHANNELS.settings.updateBackupFolder, backupFolder),
+    updateReportsFolder: (reportsFolder: string) =>
+      invoke<AppSettings>(IPC_CHANNELS.settings.updateReportsFolder, reportsFolder)
   },
   backup: {
     export: () =>
@@ -114,6 +117,18 @@ export const api = {
     exportSql: () =>
       invoke<Awaited<ReturnType<typeof backupService.exportSqlBackup>>>(
         IPC_CHANNELS.backup.exportSql
+      )
+  },
+  reports: {
+    monthly: (filters: reportsService.MonthlyReportFilters) =>
+      invoke<Awaited<ReturnType<typeof reportsService.getMonthlyReport>>>(
+        IPC_CHANNELS.reports.monthly,
+        filters
+      ),
+    exportMonthly: (filters: reportsService.MonthlyReportFilters) =>
+      invoke<Awaited<ReturnType<typeof reportsService.exportMonthlyReport>>>(
+        IPC_CHANNELS.reports.exportMonthly,
+        filters
       )
   }
 }

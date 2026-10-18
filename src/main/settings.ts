@@ -3,20 +3,26 @@ import { cp, mkdir, readFile, stat, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { joinSystemPath, resolveSystemAppDataRoot } from './systemPaths'
 
+// Each feature that writes files has its own folder, so exports of one kind
+// never end up mixed in with another's.
 export interface AppSettings {
   backupFolder: string
+  reportsFolder: string
 }
 
-export async function readSettings(
-  filePath: string,
-  defaultBackupFolder: string
-): Promise<AppSettings> {
+// Fills in any value the file doesn't have (or the whole file, if it's missing
+// or unreadable) from `defaults` - a settings file written before a setting
+// existed must keep working, not reset the settings it does have.
+export async function readSettings(filePath: string, defaults: AppSettings): Promise<AppSettings> {
   try {
     const raw = await readFile(filePath, 'utf-8')
     const parsed = JSON.parse(raw) as Partial<AppSettings>
-    return { backupFolder: parsed.backupFolder ?? defaultBackupFolder }
+    return {
+      backupFolder: parsed.backupFolder ?? defaults.backupFolder,
+      reportsFolder: parsed.reportsFolder ?? defaults.reportsFolder
+    }
   } catch {
-    return { backupFolder: defaultBackupFolder }
+    return { ...defaults }
   }
 }
 
@@ -25,7 +31,19 @@ export async function writeSettings(filePath: string, settings: AppSettings): Pr
   await writeFile(filePath, JSON.stringify(settings, null, 2))
 }
 
-// Settings (currently just the chosen backup folder) live alongside the
+// Changes some settings while leaving the rest as they are - writing a single
+// setting on its own would drop every other one from the file.
+export async function updateSettings(
+  filePath: string,
+  defaults: AppSettings,
+  patch: Partial<AppSettings>
+): Promise<AppSettings> {
+  const next = { ...(await readSettings(filePath, defaults)), ...patch }
+  await writeSettings(filePath, next)
+  return next
+}
+
+// Settings (the chosen backup and reports folders) live alongside the
 // database under the shared, per-machine location - like the database, this
 // was previously scoped to `app.getPath('userData')`, so whichever Windows
 // account configured a backup folder was the only one the app would ever

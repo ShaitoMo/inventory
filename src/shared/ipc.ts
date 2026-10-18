@@ -40,10 +40,15 @@ export const IPC_CHANNELS = {
   settings: {
     get: 'settings:get',
     chooseFolder: 'settings:chooseFolder',
-    updateBackupFolder: 'settings:updateBackupFolder'
+    updateBackupFolder: 'settings:updateBackupFolder',
+    updateReportsFolder: 'settings:updateReportsFolder'
   },
   backup: {
     export: 'backup:export',
     exportSql: 'backup:exportSql'
+  },
+  reports: {
+    monthly: 'reports:monthly',
+    exportMonthly: 'reports:exportMonthly'
   }
 } as const
